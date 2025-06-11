@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Калькулятор аден</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(145deg, #eef1f5, #d7dde5);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: #ffffff;
+      padding: 30px 25px;
+      border-radius: 15px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: 0.2s;
+    }
+
+    input:focus {
+      border-color: #7baaf7;
+      outline: none;
+      box-shadow: 0 0 5px rgba(123, 170, 247, 0.3);
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #3b7dc6;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: 500;
+      color: #2e2e2e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Калькулятор фарма аден</h2>
+    
+    <input type="number" id="adena" placeholder="Сколько аден? Например: 1500000" />
+    <input type="number" id="minutes" placeholder="За сколько минут? Например: 6" />
+    
+    <button onclick="calculate()">Рассчитать за час</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    function calculate() {
+      const adena = parseFloat(document.getElementById('adena').value);
+      const minutes = parseFloat(document.getElementById('minutes').value);
+      const resultDiv = document.getElementById('result');
+
+      if (isNaN(adena) || isNaN(minutes) || minutes <= 0) {
+        resultDiv.textContent = "Пожалуйста, введите корректные значения.";
+        return;
+      }
+
+      const perHour = (adena / minutes) * 60;
+      resultDiv.textContent = `За час: ${perHour.toLocaleString('ru-RU')} аден`;
+    }
+  </script>
+</body>
+</html>
