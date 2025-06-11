@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Калькулятор аден</title>
+  <style>
+    :root {
+      --bg-light: #eef1f5;
+      --bg-dark: #1e1e1e;
+      --card-light: #ffffff;
+      --card-dark: #2c2c2c;
+      --text-light: #2e2e2e;
+      --text-dark: #f0f0f0;
+      --accent: #4a90e2;
+      --accent-hov: #3b7dc6;
+      --danger: #d33;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-light);
+      transition: 0.3s background, color;
+    }
+    body.dark { background: var(--bg-dark); color: var(--text-dark); }
+
+    .app {
+      display: flex;
+      gap: 32px;
+      padding: 20px;
+      width: 100%;
+      max-width: 900px;
+    }
+    .panel, .log {
+      background: var(--card-light);
+      border-radius: 15px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      transition: 0.3s background;
+      padding: 32px 24px;
+    }
+    body.dark .panel, body.dark .log { background: var(--card-dark); }
+
+    .panel { width: 100%; max-width: 420px; text-align: center; }
+    .log   { width: 280px; overflow: auto; }
+
+    h2 { margin-bottom: 24px; }
+    .log h3 { margin: 0 0 12px; }
+
+    input, .main-btn {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 8px;
+    }
+    input { border: 1px solid #ccc; transition: 0.2s; }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 5px rgba(123,170,247,0.4); }
+
+    .main-btn {
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s background;
+    }
+    .main-btn:hover { background: var(--accent-hov); }
+
+    #result { margin-top: 18px; font-size: 18px; font-weight: 500; }
+
+    .entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(0,0,0,0.1);
+      font-size: 14px;
+    }
+    body.dark .entry { border-color: rgba(255,255,255,0.15); }
+
+    .del-btn {
+      padding: 2px 6px;
+      background: none;
+      border: none;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--danger);
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .del-btn:hover { opacity: 1; }
+
+    /* крупная центральная кнопка смены темы */
+    .theme-toggle {
+      position: fixed;
+      top: 32px;          /* сверху экрана */
+      left: 50%;
+      transform: translateX(-50%); /* горизонтальное центрирование */
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: var(--card-light);
+      color: var(--accent);
+      border: 3px solid var(--accent);
+      font-size: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      transition: background 0.3s, color 0.3s, transform 0.2s;
+    }
+    .theme-toggle:hover { transform: translate(-50%,-50%) scale(1.05); }
+    body.dark .theme-toggle { background: var(--card-dark); color: var(--accent-hov); }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+  <div class="app">
+    <div class="panel">
+      <h2>Калькулятор фарма аден</h2>
+      <input id="location" placeholder="Локация (необязательно)" />
+      <input id="adena" type="number" placeholder="Сколько аден? Например: 1500000" />
+      <input id="minutes" type="number" placeholder="За сколько минут? Например: 6" />
+      <button class="main-btn" onclick="calculate()">Рассчитать за час</button>
+      <button class="main-btn" onclick="saveResult()">Сохранить в таблицу</button>
+      <div id="result"></div>
+    </div>
+
+    <aside class="log">
+      <h3>Последние замеры</h3>
+      <div id="history"></div>
+    </aside>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import {
+      getFirestore, collection, addDoc, serverTimestamp,
+      query, orderBy, limit, onSnapshot,
+      deleteDoc, doc
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDb3e-6m-ryG4rhK7-w8vptqj4SMUS2Hhw',
+      authDomain: 'adenafarm-3260d.firebaseapp.com',
+      projectId: 'adenafarm-3260d',
+      storageBucket: 'adenafarm-3260d.appspot.com',
+      messagingSenderId: '455723070548',
+      appId: '1:455723070548:web:03eb62738536d4a0ada9c1'
+    };
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    const $ = id => document.getElementById(id);
+    const qs = sel => document.querySelector(sel);
+
+    window.calculate = () => {
+      const a = parseFloat($('adena').value);
+      const m = parseFloat($('minutes').value);
+      if (isNaN(a) || isNaN(m) || m <= 0) {
+        $('result').textContent = 'Введите корректные числа.';
+        return null;
+      }
+      const ph = (a / m) * 60;
+      $('result').textContent = `За час: ${ph.toLocaleString('ru-RU')} аден`;
+      return ph;
+    };
+
+    window.saveResult = async () => {
+      const ph = window.calculate();
+      if (ph === null) return;
+      const loc = ($('location').value || 'Без локации').trim();
+      try {
+        await addDoc(collection(db, 'logs'), { location: loc, perHour: Math.round(ph), ts: serverTimestamp() });
+      } catch (e) {
+        $('result').textContent = 'Ошибка сохранения: ' + e.message;
+      }
+    };
+
+    window.deleteEntry = async id => {
+      try { await deleteDoc(doc(db, 'logs', id)); }
+      catch (e) { alert('Не удалось удалить: ' + e.message); }
+    };
+
+    function subscribe() {
+      const q = query(collection(db, 'logs'), orderBy('ts', 'desc'), limit(10));
+      onSnapshot(q, snap => {
+        $('history').innerHTML = snap.docs.length ? snap.docs.map(d => {
+          const { location, perHour } = d.data();
+          return `<div class="entry"><span><strong>${location}</strong><br>${perHour.toLocaleString('ru-RU')} аден/ч</span><button class="del-btn" onclick="deleteEntry('${d.id}')">✕</button></div>`;
+        }).join('') : '<em>Пока пусто</em>';
+      });
+    }
+
+    window.toggleTheme = () => {
+      const dark = document.body.classList.toggle('dark');
+      qs('.theme-toggle').textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark');
+        qs('.theme-toggle').textContent = '☀️';
+      }
+      subscribe();
+    });
+  </script>
+</body>
+</html>
