@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>Калькулятор L2</title>
   
-  <meta name="theme-color" content="#3a8dde"/>
-  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="https://github.com/BlackSTaP/Adena/blob/main/adena.png?raw=true" type="image/png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +17,7 @@
       --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.3s;
       --font-base: 16px; --line-h: 1.6; --toggle-size: 46px;
       --text-secondary-light: #aaa; --text-secondary-dark: #777;
-      --skeleton-light: #e0e0e0; --skeleton-dark: #333;
+      --skeleton-light: #eef2f7; --skeleton-dark: #333;
     }
     * { box-sizing: border-box; }
     body {
@@ -65,10 +64,15 @@
     .buttons { display: flex; gap: var(--spacing); flex-wrap: wrap; margin-bottom: var(--spacing); }
     button {
       flex: 1; padding: 10px; font-size: 1rem; border: none; border-radius: var(--radius);
-      cursor: pointer; transition: background var(--transition), opacity var(--transition);
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
     }
     .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-primary:hover:not(:disabled) { 
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
     .result-wrapper { display: flex; justify-content: center; align-items: center; gap: 12px; min-height: 1.5em; margin-top: var(--spacing); }
     #result { font-size: 1.25rem; font-weight: 600; }
     #copy-btn { flex: none; padding: 0; width: 32px; height: 32px; background: none; border: none; color: var(--text-light); opacity: 0.6; transition: opacity 0.2s, color 0.2s; cursor: pointer;}
@@ -79,9 +83,12 @@
       display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px;
       margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius);
       transition: background var(--transition);
-      animation: fadeIn 0.5s ease-in-out;
+      animation: item-appear 0.4s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes item-appear {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
     body.dark .entry { background: rgba(255,255,255,0.05); }
     .entry-info { display: flex; flex-direction: column; flex-grow: 1; }
     .entry-info span { display: inline-flex; align-items: center; gap: 4px; }
@@ -117,14 +124,25 @@
       margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius);
     }
     body.dark .skeleton-entry { background: rgba(255,255,255,0.05); }
-    .skeleton-text { height: 20px; border-radius: 4px; background-color: var(--skeleton-light); animation: pulse 1.5s ease-in-out infinite; }
-    body.dark .skeleton-text { background-color: var(--skeleton-dark); }
+    .skeleton-text, .skeleton-avatar {
+      background-color: var(--skeleton-light);
+      background-image: linear-gradient(to right, var(--skeleton-light) 0%, #e0e0e0 20%, var(--skeleton-light) 40%, var(--skeleton-light) 100%);
+      background-repeat: no-repeat;
+      background-size: 800px 104px; 
+      animation: shimmer 1.5s linear infinite;
+    }
+    body.dark .skeleton-text, body.dark .skeleton-avatar {
+      background-color: var(--skeleton-dark);
+      background-image: linear-gradient(to right, var(--skeleton-dark) 0%, #444 20%, var(--skeleton-dark) 40%, var(--skeleton-dark) 100%);
+    }
+    @keyframes shimmer {
+      0% { background-position: -468px 0; }
+      100% { background-position: 468px 0; }
+    }
+    .skeleton-text { height: 20px; border-radius: 4px; }
     .skeleton-text.short { width: 40%; }
     .skeleton-text.long { width: 70%; margin-bottom: 8px; }
-    .skeleton-avatar { width: 30px; height: 30px; border-radius: 50%; background-color: var(--skeleton-light); animation: pulse 1.5s ease-in-out infinite; }
-    body.dark .skeleton-avatar { background-color: var(--skeleton-dark); }
-    @keyframes pulse { 50% { opacity: 0.5; } }
-
+    .skeleton-avatar { width: 30px; height: 30px; border-radius: 50%; }
     @media (max-width: 800px) { .container { display: block; margin-top: 140px; } .history { margin-top: var(--spacing); } }
   </style>
 </head>
@@ -326,10 +344,6 @@
         const hist = $('history-list');
         const logsQuery = query(collection(db, 'profiles', profileName, 'logs'), orderBy('ts', 'desc'), limit(100));
         historyUnsubscribe = onSnapshot(logsQuery, snap => {
-          if (snap.empty) {
-            hist.innerHTML = '<p><em>Пока пусто</em></p>';
-            return;
-          }
           hist.innerHTML = snap.docs.map(doc => {
             const { location, perHour, ts } = doc.data();
             const date = ts ? ts.toDate().toLocaleString('ru-RU') : 'недавно';
@@ -344,7 +358,7 @@
                         <button class="entry-btn del-btn" onclick="app.deleteEntry('${doc.id}')" title="Удалить">✕</button>
                       </div>
                     </div>`;
-          }).join('');
+          }).join('') || '<p><em>Пока пусто</em></p>';
         }, error => {
           console.error("Ошибка подписки:", error);
           hist.innerHTML = '<p><em>Не удалось загрузить историю.</em></p>';
@@ -370,7 +384,7 @@
 
       const toggleTheme = () => {
         const isDark = document.body.classList.toggle('dark');
-        $('toggle-theme').innerHTML = isDark ? '☀️' : '🌙';
+        $('toggle-theme').innerHTML = isDark ? '☀️' : '�';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
       };
 
@@ -456,6 +470,17 @@
 
     window.app = appModule();
     document.addEventListener('DOMContentLoaded', window.app.init);
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
   </script>
 </body>
 </html>
+�
