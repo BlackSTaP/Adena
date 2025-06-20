@@ -8,6 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
   <style>
     :root {
       --bg-light: #f7f9fc; --bg-dark: #1c1c1c; --panel-light: #ffffff; --panel-dark: #262626;
@@ -22,6 +26,10 @@
       font-size: var(--font-base); line-height: var(--line-h); color: var(--text-light);
       background: var(--bg-light); transition: background var(--transition), color var(--transition);
       display: flex; flex-direction: column; align-items: center;
+    }
+    #tsparticles {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
     }
     body.dark { background: var(--bg-dark); color: var(--text-dark); }
     .header-controls {
@@ -96,9 +104,6 @@
     body.dark .profile-delete-btn { color: var(--text-secondary-dark); }
     .profile-delete-btn:hover { color: var(--error); background-color: rgba(231, 76, 60, 0.1); }
     #profile-status { font-size: 0.9rem; text-align: center; font-weight: 600; }
-    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-    .toast { background-color: var(--success); color: #fff; padding: 12px 20px; border-radius: var(--radius); box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(20px); transition: opacity 0.4s, transform 0.4s; }
-    .toast.show { opacity: 1; transform: translateY(0); }
     .site-footer { width: 100%; text-align: center; padding: var(--spacing) 0; margin-top: 40px; color: var(--text-secondary-light); }
     body.dark .site-footer { color: var(--text-secondary-dark); }
     .site-footer p { margin: 0; font-family: 'Caveat', cursive; font-size: 1.3rem; font-weight: 700; }
@@ -106,11 +111,12 @@
   </style>
 </head>
 <body>
+  <div id="tsparticles"></div>
   <div class="header-controls">
-    <button id="profile-btn" class="control-button" onclick="app.openProfileManager()" title="Выбрать профиль">
+    <button id="profile-btn" class="control-button" data-tippy-content="Выбрать профиль" onclick="app.openProfileManager()">
       <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
     </button>
-    <button id="toggle-theme" class="control-button" onclick="app.toggleTheme()" title="Тема">🌙</button>
+    <button id="toggle-theme" class="control-button" data-tippy-content="Сменить тему" onclick="app.toggleTheme()">🌙</button>
   </div>
   <div class="container">
     <div class="panel">
@@ -158,14 +164,21 @@
       <button class="btn-primary" onclick="app.createNewProfile()">Создать и выбрать</button>
     </div>
   </div>
-  <div id="toast-container"></div>
   <footer class="site-footer">
     <p>Калькулятор аден by EvilBlack</p>
   </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://unpkg.com/@popperjs/core@2"></script>
+  <script src="https://unpkg.com/tippy.js@6"></script>
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
     import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { formatDistanceToNow } from 'https://cdn.skypack.dev/date-fns@2';
+    import { ru } from 'https://cdn.skypack.dev/date-fns/locale';
 
     const firebaseConfig = {
       apiKey: 'AIzaSyDb3e-6m-ryG4rhK7-w8vptqj4SMUS2Hhw',
@@ -185,19 +198,6 @@
       let historyUnsubscribe = null;
       let currentPerHourResult = null;
 
-      const showToast = (message) => {
-        const container = $('toast-container');
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.textContent = message;
-        container.appendChild(toast);
-        setTimeout(() => toast.classList.add('show'), 10);
-        setTimeout(() => {
-          toast.classList.remove('show');
-          toast.addEventListener('transitionend', () => toast.remove());
-        }, 3000);
-      };
-
       const formatAdenaShort = (num) => {
         if (num >= 1000000000) return `${parseFloat((num / 1000000000).toFixed(2))}ккк`;
         if (num >= 1000000) return `${parseFloat((num / 1000000).toFixed(2))}кк`;
@@ -216,9 +216,9 @@
         textArea.select();
         try {
           document.execCommand('copy');
-          showToast('Скопировано в буфер обмена!');
+          Swal.fire({ icon: 'success', title: 'Скопировано!', showConfirmButton: false, timer: 1500 });
         } catch (err) {
-          showToast('Не удалось скопировать.');
+          Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось скопировать.' });
         }
         document.body.removeChild(textArea);
       };
@@ -227,7 +227,7 @@
         if (navigator.clipboard && navigator.clipboard.writeText) {
           try {
             await navigator.clipboard.writeText(text);
-            showToast('Скопировано в буфер обмена!');
+            Swal.fire({ icon: 'success', title: 'Скопировано!', showConfirmButton: false, timer: 1500 });
           } catch (err) {
             fallbackCopyToClipboard(text);
           }
@@ -263,14 +263,14 @@
       };
 
       const saveResult = async () => {
-        if (!currentProfile) { showToast('Сначала выберите профиль'); return; }
+        if (!currentProfile) { Swal.fire('Ошибка', 'Сначала выберите профиль', 'error'); return; }
         const perHour = calculate();
-        if (!perHour) { showToast('Введите корректные значения.'); return; }
+        if (!perHour) { Swal.fire('Ошибка', 'Введите корректные значения', 'error'); return; }
         try {
           await addDoc(collection(db, 'profiles', currentProfile, 'logs'), {
             location: ($('location').value || 'Без локации').trim(), perHour, ts: serverTimestamp()
           });
-          showToast('Запись о фарме сохранена!');
+          Swal.fire({ icon: 'success', title: 'Сохранено!', showConfirmButton: false, timer: 1500 });
           $('adena').value = ''; $('minutes').value = ''; $('location').value = '';
           calculate();
         } catch(e) { console.error("Ошибка сохранения: ", e); }
@@ -278,7 +278,26 @@
       
       const deleteEntry = async (id) => {
         if (!currentProfile) return;
-        try { await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); } catch(e) { console.error("Ошибка удаления: ", e); }
+        Swal.fire({
+            title: 'Удалить запись?',
+            text: "Это действие нельзя будет отменить!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Да, удалить!',
+            cancelButtonText: 'Отмена'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try { 
+                    await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); 
+                    Swal.fire('Удалено!', 'Запись была удалена.', 'success');
+                } catch(e) { 
+                    console.error("Ошибка удаления: ", e); 
+                    Swal.fire('Ошибка!', 'Не удалось удалить запись.', 'error');
+                }
+            }
+        });
       };
 
       const subscribeHistory = (profileName) => {
@@ -288,19 +307,21 @@
         historyUnsubscribe = onSnapshot(logsQuery, snap => {
           hist.innerHTML = snap.docs.map(doc => {
             const { location, perHour, ts } = doc.data();
-            const date = ts ? ts.toDate().toLocaleString('ru-RU') : 'недавно';
-            const textToCopy = `Локация: ${location}\nАден/час: ${perHour.toLocaleString('ru-RU')}\nДата: ${date}`;
+            const date = ts ? formatDistanceToNow(ts.toDate(), { addSuffix: true, locale: ru }) : 'недавно';
+            const fullDate = ts ? ts.toDate().toLocaleString('ru-RU') : '';
+            const textToCopy = `Локация: ${location}\nАден/час: ${perHour.toLocaleString('ru-RU')}\nДата: ${fullDate}`;
             return `<div class="entry">
                       <div class="entry-info">
                         <span>${location} — ${formatAdenaShort(perHour)} аден/ч</span>
-                        <span>${date}</span>
+                        <span data-tippy-content="${fullDate}">${date}</span>
                       </div>
                       <div class="entry-buttons">
-                        <button class="entry-btn" onclick="app.copyHistoryEntry(\`${textToCopy}\`)" title="Копировать"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path></svg></button>
-                        <button class="entry-btn del-btn" onclick="app.deleteEntry('${doc.id}')" title="Удалить">✕</button>
+                        <button class="entry-btn" data-tippy-content="Копировать" onclick="app.copyHistoryEntry(\`${textToCopy}\`)"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path></svg></button>
+                        <button class="entry-btn del-btn" data-tippy-content="Удалить" onclick="app.deleteEntry('${doc.id}')">✕</button>
                       </div>
                     </div>`;
           }).join('') || '<p><em>Пока пусто</em></p>';
+          tippy('[data-tippy-content]');
         }, error => {
           console.error("Ошибка подписки:", error);
           hist.innerHTML = '<p><em>Не удалось загрузить историю.</em></p>';
@@ -352,26 +373,39 @@
       const createNewProfile = async () => {
         const newNameInput = $('new-profile-name');
         const newName = newNameInput.value.trim();
-        if (!newName) { showToast('Имя профиля не может быть пустым.'); return; }
+        if (!newName) { Swal.fire('Ошибка', 'Имя профиля не может быть пустым.', 'error'); return; }
         await setDoc(doc(db, 'profiles', newName), {});
         newNameInput.value = '';
         selectProfile(newName);
       };
 
       const deleteProfile = async (profileName) => {
-        if (!confirm(`Вы уверены, что хотите удалить профиль "${profileName}"?`)) { return; }
-        try {
-          const logsQuery = query(collection(db, 'profiles', profileName, 'logs'));
-          const logsSnapshot = await getDocs(logsQuery);
-          await Promise.all(logsSnapshot.docs.map(logDoc => deleteDoc(logDoc.ref)));
-          await deleteDoc(doc(db, 'profiles', profileName));
-          if (currentProfile === profileName) {
-            currentProfile = null;
-            localStorage.removeItem('adenafarm_currentProfile');
-            updateUiForProfile();
-          }
-          await openProfileManager();
-        } catch (e) { console.error("Ошибка при удалении профиля: ", e); }
+         Swal.fire({
+            title: 'Удалить профиль?',
+            text: `Вы уверены, что хотите удалить профиль "${profileName}"? Все данные будут стерты безвозвратно.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Да, удалить!',
+            cancelButtonText: 'Отмена'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                  const logsQuery = query(collection(db, 'profiles', profileName, 'logs'));
+                  const logsSnapshot = await getDocs(logsQuery);
+                  await Promise.all(logsSnapshot.docs.map(logDoc => deleteDoc(logDoc.ref)));
+                  await deleteDoc(doc(db, 'profiles', profileName));
+                  if (currentProfile === profileName) {
+                    currentProfile = null;
+                    localStorage.removeItem('adenafarm_currentProfile');
+                    updateUiForProfile();
+                  }
+                  await openProfileManager();
+                   Swal.fire('Удалено!', `Профиль ${profileName} был удален.`, 'success');
+                } catch (e) { console.error("Ошибка при удалении профиля: ", e); }
+            }
+        });
       };
 
       const updateUiForProfile = () => {
@@ -387,6 +421,32 @@
           formElements.forEach(id => $(id).disabled = true);
         }
       };
+      
+      const initLibs = () => {
+          tsParticles.load("tsparticles", {
+              fpsLimit: 60,
+              interactivity: {
+                  events: {
+                      onHover: { enable: true, mode: "repulse" },
+                      resize: true,
+                  },
+                  modes: {
+                      repulse: { distance: 60, duration: 0.4 },
+                  },
+              },
+              particles: {
+                  color: { value: "#888" },
+                  links: { color: "#888", distance: 150, enable: true, opacity: 0.2, width: 1 },
+                  move: { direction: "none", enable: true, outModes: { default: "bounce" }, random: false, speed: 1, straight: false },
+                  number: { density: { enable: true, area: 800 }, value: 80 },
+                  opacity: { value: 0.2 },
+                  shape: { type: "circle" },
+                  size: { value: { min: 1, max: 3 } },
+              },
+              detectRetina: true,
+          });
+          tippy('[data-tippy-content]');
+      };
 
       const init = () => {
         if (localStorage.getItem('theme') === 'dark') {
@@ -401,6 +461,7 @@
           currentProfile = savedProfile;
         }
         updateUiForProfile();
+        initLibs();
       };
 
       return {
@@ -412,6 +473,7 @@
 
     window.app = appModule();
     document.addEventListener('DOMContentLoaded', window.app.init);
+
   </script>
 </body>
 </html>
