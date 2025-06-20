@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>Калькулятор L2</title>
-  
   <link rel="icon" href="https://github.com/BlackSTaP/Adena/blob/main/adena.png?raw=true" type="image/png">
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
@@ -17,7 +15,6 @@
       --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.3s;
       --font-base: 16px; --line-h: 1.6; --toggle-size: 46px;
       --text-secondary-light: #aaa; --text-secondary-dark: #777;
-      --skeleton-light: #eef2f7; --skeleton-dark: #333;
     }
     * { box-sizing: border-box; }
     body {
@@ -64,31 +61,17 @@
     .buttons { display: flex; gap: var(--spacing); flex-wrap: wrap; margin-bottom: var(--spacing); }
     button {
       flex: 1; padding: 10px; font-size: 1rem; border: none; border-radius: var(--radius);
-      cursor: pointer;
-      transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      cursor: pointer; transition: background var(--transition), opacity var(--transition);
     }
     .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover:not(:disabled) { 
-        background: var(--accent-hover);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
     .result-wrapper { display: flex; justify-content: center; align-items: center; gap: 12px; min-height: 1.5em; margin-top: var(--spacing); }
     #result { font-size: 1.25rem; font-weight: 600; }
     #copy-btn { flex: none; padding: 0; width: 32px; height: 32px; background: none; border: none; color: var(--text-light); opacity: 0.6; transition: opacity 0.2s, color 0.2s; cursor: pointer;}
     body.dark #copy-btn { color: var(--text-dark); }
     #copy-btn:hover { opacity: 1; }
     .history { max-height: 70vh; overflow-y: auto; }
-    .entry {
-      display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px;
-      margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius);
-      transition: background var(--transition);
-      animation: item-appear 0.4s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
-    }
-    @keyframes item-appear {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
+    .entry { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px; margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius); transition: background var(--transition); }
     body.dark .entry { background: rgba(255,255,255,0.05); }
     .entry-info { display: flex; flex-direction: column; flex-grow: 1; }
     .entry-info span { display: inline-flex; align-items: center; gap: 4px; }
@@ -119,30 +102,6 @@
     .site-footer { width: 100%; text-align: center; padding: var(--spacing) 0; margin-top: 40px; color: var(--text-secondary-light); }
     body.dark .site-footer { color: var(--text-secondary-dark); }
     .site-footer p { margin: 0; font-family: 'Caveat', cursive; font-size: 1.3rem; font-weight: 700; }
-    .skeleton-entry {
-      display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px;
-      margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius);
-    }
-    body.dark .skeleton-entry { background: rgba(255,255,255,0.05); }
-    .skeleton-text, .skeleton-avatar {
-      background-color: var(--skeleton-light);
-      background-image: linear-gradient(to right, var(--skeleton-light) 0%, #e0e0e0 20%, var(--skeleton-light) 40%, var(--skeleton-light) 100%);
-      background-repeat: no-repeat;
-      background-size: 800px 104px; 
-      animation: shimmer 1.5s linear infinite;
-    }
-    body.dark .skeleton-text, body.dark .skeleton-avatar {
-      background-color: var(--skeleton-dark);
-      background-image: linear-gradient(to right, var(--skeleton-dark) 0%, #444 20%, var(--skeleton-dark) 40%, var(--skeleton-dark) 100%);
-    }
-    @keyframes shimmer {
-      0% { background-position: -468px 0; }
-      100% { background-position: 468px 0; }
-    }
-    .skeleton-text { height: 20px; border-radius: 4px; }
-    .skeleton-text.short { width: 40%; }
-    .skeleton-text.long { width: 70%; margin-bottom: 8px; }
-    .skeleton-avatar { width: 30px; height: 30px; border-radius: 50%; }
     @media (max-width: 800px) { .container { display: block; margin-top: 140px; } .history { margin-top: var(--spacing); } }
   </style>
 </head>
@@ -321,26 +280,9 @@
         if (!currentProfile) return;
         try { await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); } catch(e) { console.error("Ошибка удаления: ", e); }
       };
-      
-      const showSkeletonLoader = () => {
-        const hist = $('history-list');
-        let skeletonHTML = '';
-        for (let i = 0; i < 5; i++) {
-          skeletonHTML += `
-            <div class="skeleton-entry">
-              <div class="entry-info">
-                <div class="skeleton-text long"></div>
-                <div class="skeleton-text short"></div>
-              </div>
-              <div class="skeleton-avatar"></div>
-            </div>`;
-        }
-        hist.innerHTML = skeletonHTML;
-      };
 
       const subscribeHistory = (profileName) => {
         if (historyUnsubscribe) historyUnsubscribe();
-        showSkeletonLoader();
         const hist = $('history-list');
         const logsQuery = query(collection(db, 'profiles', profileName, 'logs'), orderBy('ts', 'desc'), limit(100));
         historyUnsubscribe = onSnapshot(logsQuery, snap => {
@@ -384,7 +326,7 @@
 
       const toggleTheme = () => {
         const isDark = document.body.classList.toggle('dark');
-        $('toggle-theme').innerHTML = isDark ? '☀️' : '�';
+        $('toggle-theme').innerHTML = isDark ? '☀️' : '🌙';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
       };
 
@@ -470,17 +412,6 @@
 
     window.app = appModule();
     document.addEventListener('DOMContentLoaded', window.app.init);
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        }, err => {
-          console.log('ServiceWorker registration failed: ', err);
-        });
-      });
-    }
   </script>
 </body>
 </html>
-�
