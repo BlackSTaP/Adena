@@ -1,0 +1,21 @@
+{
+  "name": "Калькулятор L2",
+  "short_name": "L2 Calc",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1c1c1c",
+  "theme_color": "#3a8dde",
+  "description": "Калькулятор фарма аден для Lineage 2.",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

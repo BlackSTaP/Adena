@@ -3,14 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>Калькулятор фарма аден</title>
+  <title>Калькулятор L2</title>
+  
+  <meta name="theme-color" content="#3a8dde"/>
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-light: #f7f9fc; --bg-dark: #1c1c1c; --panel-light: #ffffff; --panel-dark: #262626;
       --text-light: #333333; --text-dark: #e1e1e1; --accent: #3a8dde; --accent-hover: #3274c8;
-      --error: #e74c3c; --radius: 8px; --spacing: 16px; --transition: 0.3s;
+      --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.3s;
       --font-base: 16px; --line-h: 1.6; --toggle-size: 46px;
       --text-secondary-light: #aaa; --text-secondary-dark: #777;
+      --skeleton-light: #e0e0e0; --skeleton-dark: #333;
     }
     * { box-sizing: border-box; }
     body {
@@ -61,72 +69,71 @@
     }
     .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
-    #result { margin-top: var(--spacing); font-size: 1.25rem; font-weight: 600; min-height: 1.5em; text-align: center; }
-    .history { max-height: 70vh; overflow-y: scroll; }
-    .entry { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px; margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius); transition: background var(--transition); }
+    .result-wrapper { display: flex; justify-content: center; align-items: center; gap: 12px; min-height: 1.5em; margin-top: var(--spacing); }
+    #result { font-size: 1.25rem; font-weight: 600; }
+    #copy-btn { flex: none; padding: 0; width: 32px; height: 32px; background: none; border: none; color: var(--text-light); opacity: 0.6; transition: opacity 0.2s, color 0.2s; cursor: pointer;}
+    body.dark #copy-btn { color: var(--text-dark); }
+    #copy-btn:hover { opacity: 1; }
+    .history { max-height: 70vh; overflow-y: auto; }
+    .entry {
+      display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px;
+      margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius);
+      transition: background var(--transition);
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     body.dark .entry { background: rgba(255,255,255,0.05); }
-    .entry-info { display: flex; flex-direction: column; }
+    .entry-info { display: flex; flex-direction: column; flex-grow: 1; }
+    .entry-info span { display: inline-flex; align-items: center; gap: 4px; }
     .entry-info span:first-child { font-weight: 600; }
     .entry-info span:last-child { font-size: 0.875rem; color: #666; transition: color var(--transition); }
     body.dark .entry-info span:last-child { color: #aaa; }
-    .del-btn { background: none; border: none; font-size: 1rem; color: var(--error); cursor: pointer; }
+    .entry-buttons { display: flex; align-items: center; gap: 4px; }
+    .entry-btn { flex: none; width: 30px; height: 30px; padding: 0; background: none; border: none; opacity: 0.5; transition: opacity 0.2s; cursor: pointer; }
+    .entry-btn:hover { opacity: 1; }
+    .entry-btn svg { width: 16px; height: 16px; fill: var(--text-light); }
+    body.dark .entry-btn svg { fill: var(--text-dark); }
+    .del-btn { color: var(--error); font-size: 1.5rem; line-height: 1; }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .overlay.active { display: flex; }
-    .modal {
-      background: var(--panel-light); padding: var(--spacing); border-radius: var(--radius); max-width: 600px;
-      width: 90%; box-shadow: 0 2px 12px rgba(0,0,0,0.2); position: relative;
-    }
+    .modal { background: var(--panel-light); padding: var(--spacing); border-radius: var(--radius); max-width: 600px; width: 90%; box-shadow: 0 2px 12px rgba(0,0,0,0.2); position: relative; }
     body.dark .modal { background: var(--panel-dark); }
-    .modal-close {
-      position: absolute; top: 8px; right: 8px; background: none;
-      border: none; font-size: 1.25rem; color: var(--error); cursor: pointer;
-    }
+    .modal-close { position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 1.25rem; color: var(--error); cursor: pointer; }
     #profile-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--spacing); max-height: 200px; overflow-y: auto; }
-    
-    /* ИЗМЕНЕНО: Финальные стили для строки профиля и кнопки удаления */
-    .profile-entry {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    /* НОВЫЙ СТИЛЬ: Делаем саму синюю кнопку ниже, чтобы строка не растягивалась */
-    .profile-name-btn {
-      flex-grow: 1;
-      text-align: center;
-      padding: 5px 10px; /* Уменьшаем отступы */
-      font-size: 0.9rem; /* Уменьшаем шрифт */
-      line-height: 1.4;  /* Управляем высотой строки */
-    }
-    /* НОВЫЙ СТИЛЬ: Копируем стиль .modal-close */
-    .profile-delete-btn {
-      background: none;
-      border: none;
-      padding: 4px 8px;
-      border-radius: var(--radius);
-      color: var(--text-secondary-light);
-      font-size: 1.25rem; /* Такой же размер, как у крестика закрытия окна */
-      font-weight: normal;
-      cursor: pointer;
-      transition: color 0.2s, background-color 0.2s;
-    }
-    body.dark .profile-delete-btn {
-      color: var(--text-secondary-dark);
-    }
-    .profile-delete-btn:hover {
-      color: var(--error);
-      background-color: rgba(231, 76, 60, 0.1);
-    }
-    
+    .profile-entry { display: flex; align-items: center; gap: 8px; }
+    .profile-name-btn { flex-grow: 1; text-align: center; padding: 5px 10px; font-size: 0.9rem; line-height: 1.4; }
+    .profile-delete-btn { background: none; border: none; padding: 4px 8px; border-radius: var(--radius); color: var(--text-secondary-light); font-size: 1.25rem; font-weight: normal; cursor: pointer; transition: color 0.2s, background-color 0.2s; }
+    body.dark .profile-delete-btn { color: var(--text-secondary-dark); }
+    .profile-delete-btn:hover { color: var(--error); background-color: rgba(231, 76, 60, 0.1); }
     #profile-status { font-size: 0.9rem; text-align: center; font-weight: 600; }
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+    .toast { background-color: var(--success); color: #fff; padding: 12px 20px; border-radius: var(--radius); box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(20px); transition: opacity 0.4s, transform 0.4s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .site-footer { width: 100%; text-align: center; padding: var(--spacing) 0; margin-top: 40px; color: var(--text-secondary-light); }
+    body.dark .site-footer { color: var(--text-secondary-dark); }
+    .site-footer p { margin: 0; font-family: 'Caveat', cursive; font-size: 1.3rem; font-weight: 700; }
+    .skeleton-entry {
+      display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px;
+      margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius);
+    }
+    body.dark .skeleton-entry { background: rgba(255,255,255,0.05); }
+    .skeleton-text { height: 20px; border-radius: 4px; background-color: var(--skeleton-light); animation: pulse 1.5s ease-in-out infinite; }
+    body.dark .skeleton-text { background-color: var(--skeleton-dark); }
+    .skeleton-text.short { width: 40%; }
+    .skeleton-text.long { width: 70%; margin-bottom: 8px; }
+    .skeleton-avatar { width: 30px; height: 30px; border-radius: 50%; background-color: var(--skeleton-light); animation: pulse 1.5s ease-in-out infinite; }
+    body.dark .skeleton-avatar { background-color: var(--skeleton-dark); }
+    @keyframes pulse { 50% { opacity: 0.5; } }
+
     @media (max-width: 800px) { .container { display: block; margin-top: 140px; } .history { margin-top: var(--spacing); } }
   </style>
 </head>
 <body>
   <div class="header-controls">
-      <button id="profile-btn" class="control-button" onclick="openProfileManager()" title="Выбрать профиль">
-        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
-      </button>
-      <button id="toggle-theme" class="control-button" onclick="toggleTheme()" title="Тема">🌙</button>
+    <button id="profile-btn" class="control-button" onclick="app.openProfileManager()" title="Выбрать профиль">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+    </button>
+    <button id="toggle-theme" class="control-button" onclick="app.toggleTheme()" title="Тема">🌙</button>
   </div>
   <div class="container">
     <div class="panel">
@@ -145,39 +152,43 @@
         <input id="minutes" type="number" placeholder="Время (мин)" disabled/>
       </div>
       <div class="buttons">
-        <button id="save-btn" class="btn-primary" onclick="saveResult()" disabled>Сохранить</button>
-        <button id="stats-btn" class="btn-primary" onclick="openStats()" disabled>Статистика</button>
+        <button id="save-btn" class="btn-primary" onclick="app.saveResult()" disabled>Сохранить</button>
+        <button id="stats-btn" class="btn-primary" onclick="app.openStats()" disabled>Статистика</button>
       </div>
-      <div id="result" aria-live="polite"></div>
+      <div class="result-wrapper">
+        <div id="result" aria-live="polite"></div>
+        <button id="copy-btn" title="Копировать число" style="display: none;" onclick="app.copyResult()">
+          <svg fill="currentColor" viewBox="0 0 20 20"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path></svg>
+        </button>
+      </div>
     </div>
     <div class="history">
-      <h2>История (макс. 100)</h2>
-      <div id="history-list"><p><em>Выберите профиль, чтобы увидеть историю.</em></p></div>
+      <h2>История</h2>
+      <div id="history-list"><p><em>Выберите профиль для просмотра.</em></p></div>
     </div>
   </div>
   <div class="overlay" id="statsOverlay">
-    <div class="modal"> <button class="modal-close" onclick="closeStats()">✕</button> <h3>Статистика фарма</h3> <canvas id="statsChart"></canvas> </div>
+    <div class="modal"> <button class="modal-close" onclick="app.closeStats()">✕</button> <h3>Статистика фарма</h3> <canvas id="statsChart"></canvas> </div>
   </div>
   <div class="overlay" id="profileOverlay">
     <div class="modal">
-      <button class="modal-close" onclick="closeProfileManager()">✕</button>
+      <button class="modal-close" onclick="app.closeProfileManager()">✕</button>
       <h3>Выберите или создайте профиль</h3>
       <div id="profile-list-container"> <p>Существующие профили:</p> <div id="profile-list">Загрузка...</div> </div>
       <hr>
       <p>Создать новый:</p>
       <div class="field"> <input id="new-profile-name" type="text" placeholder="Введите имя профиля"/> </div>
-      <button class="btn-primary" onclick="createNewProfile()">Создать и выбрать</button>
+      <button class="btn-primary" onclick="app.createNewProfile()">Создать и выбрать</button>
     </div>
   </div>
-
+  <div id="toast-container"></div>
+  <footer class="site-footer">
+    <p>Калькулятор аден by EvilBlack</p>
+  </footer>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import {
-      getFirestore, collection, addDoc, serverTimestamp,
-      query, orderBy, limit, onSnapshot, getDocs,
-      deleteDoc, doc, setDoc
-    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: 'AIzaSyDb3e-6m-ryG4rhK7-w8vptqj4SMUS2Hhw',
@@ -187,163 +198,264 @@
       messagingSenderId: '455723070548',
       appId: '1:455723070548:web:03eb62738536d4a0ada9c1'
     };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const $ = id => document.getElementById(id);
+    
+    const appModule = () => {
+      initializeApp(firebaseConfig);
+      const db = getFirestore();
+      const $ = id => document.getElementById(id);
 
-    let currentProfile = null;
-    let historyUnsubscribe = null;
+      let currentProfile = null;
+      let historyUnsubscribe = null;
+      let currentPerHourResult = null;
 
-    const calculate = () => {
-      const a = parseFloat($('adena').value), m = parseFloat($('minutes').value);
-      if (!a || !m) { $('result').textContent = ''; return null; }
-      const perHour = (a / m) * 60;
-      $('result').textContent = `За час: ${perHour.toLocaleString('ru-RU')} аден`;
-      return Math.round(perHour);
-    };
-    const saveResult = async () => {
-      if (!currentProfile) return;
-      const perHour = calculate();
-      if (!perHour) { $('result').textContent = 'Введите корректные значения.'; return; }
-      try {
-        const logsCollection = collection(db, 'profiles', currentProfile, 'logs');
-        await addDoc(logsCollection, { location: ($('location').value||'Без локации').trim(), perHour, ts: serverTimestamp() });
-        $('result').textContent = 'Сохранено!';
-        $('adena').value = ''; $('minutes').value = ''; $('location').value = '';
-      } catch(e) { console.error("Ошибка сохранения: ", e); $('result').textContent = 'Ошибка при сохранении.'; }
-    };
-    const deleteEntry = async (id) => {
+      const showToast = (message) => {
+        const container = $('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+          toast.classList.remove('show');
+          toast.addEventListener('transitionend', () => toast.remove());
+        }, 3000);
+      };
+
+      const formatAdenaShort = (num) => {
+        if (num >= 1000000000) return `${parseFloat((num / 1000000000).toFixed(2))}ккк`;
+        if (num >= 1000000) return `${parseFloat((num / 1000000).toFixed(2))}кк`;
+        if (num >= 10000) return `${parseFloat((num / 1000).toFixed(1))}к`;
+        return num.toLocaleString('ru-RU');
+      };
+
+      const fallbackCopyToClipboard = (text) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "-9999px";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showToast('Скопировано в буфер обмена!');
+        } catch (err) {
+          showToast('Не удалось скопировать.');
+        }
+        document.body.removeChild(textArea);
+      };
+
+      const copyText = async (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(text);
+            showToast('Скопировано в буфер обмена!');
+          } catch (err) {
+            fallbackCopyToClipboard(text);
+          }
+        } else {
+          fallbackCopyToClipboard(text);
+        }
+      };
+      
+      const copyResult = () => {
+        if (currentPerHourResult === null) return;
+        copyText(currentPerHourResult.toString());
+      };
+
+      const copyHistoryEntry = (textToCopy) => {
+         copyText(textToCopy);
+      };
+
+      const calculate = () => {
+        const a = parseFloat($('adena').value);
+        const m = parseFloat($('minutes').value);
+        const copyBtn = $('copy-btn');
+        if (!a || !m) {
+          currentPerHourResult = null;
+          if (copyBtn) copyBtn.style.display = 'none';
+          $('result').textContent = '';
+          return null;
+        }
+        const perHour = (a / m) * 60;
+        currentPerHourResult = Math.round(perHour);
+        $('result').textContent = `За час: ${perHour.toLocaleString('ru-RU')} аден`;
+        if (copyBtn) copyBtn.style.display = 'inline-block';
+        return currentPerHourResult;
+      };
+
+      const saveResult = async () => {
+        if (!currentProfile) { showToast('Сначала выберите профиль'); return; }
+        const perHour = calculate();
+        if (!perHour) { showToast('Введите корректные значения.'); return; }
+        try {
+          await addDoc(collection(db, 'profiles', currentProfile, 'logs'), {
+            location: ($('location').value || 'Без локации').trim(), perHour, ts: serverTimestamp()
+          });
+          showToast('Запись о фарме сохранена!');
+          $('adena').value = ''; $('minutes').value = ''; $('location').value = '';
+          calculate();
+        } catch(e) { console.error("Ошибка сохранения: ", e); }
+      };
+      
+      const deleteEntry = async (id) => {
         if (!currentProfile) return;
         try { await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); } catch(e) { console.error("Ошибка удаления: ", e); }
-    };
-    const subscribeHistory = (profileName) => {
-        if (historyUnsubscribe) historyUnsubscribe();
+      };
+      
+      const showSkeletonLoader = () => {
         const hist = $('history-list');
-        const logsQuery = query(collection(db, 'profiles', profileName, 'logs'), orderBy('ts','desc'), limit(100));
+        let skeletonHTML = '';
+        for (let i = 0; i < 5; i++) {
+          skeletonHTML += `
+            <div class="skeleton-entry">
+              <div class="entry-info">
+                <div class="skeleton-text long"></div>
+                <div class="skeleton-text short"></div>
+              </div>
+              <div class="skeleton-avatar"></div>
+            </div>`;
+        }
+        hist.innerHTML = skeletonHTML;
+      };
+
+      const subscribeHistory = (profileName) => {
+        if (historyUnsubscribe) historyUnsubscribe();
+        showSkeletonLoader();
+        const hist = $('history-list');
+        const logsQuery = query(collection(db, 'profiles', profileName, 'logs'), orderBy('ts', 'desc'), limit(100));
         historyUnsubscribe = onSnapshot(logsQuery, snap => {
-            if (snap.empty) { hist.innerHTML = '<p><em>Пока пусто</em></p>'; return; }
-            hist.innerHTML = snap.docs.map(d => {
-              const {location, perHour, ts} = d.data();
-              const date = ts ? ts.toDate().toLocaleString('ru-RU') : 'недавно';
-              return `<div class="entry"><div class="entry-info"><span>${location} — ${perHour.toLocaleString('ru-RU')} аден/ч</span><span>${date}</span></div><button class="del-btn" onclick="deleteEntry('${d.id}')">✕</button></div>`;
-            }).join('');
-        }, error => { console.error("Ошибка подписки:", error); hist.innerHTML = '<p><em>Не удалось загрузить историю.</em></p>'; });
-    };
-    const openStats = async () => {
-      if (!currentProfile) return;
-      $('statsOverlay').classList.add('active');
-      const logsQuery = query(collection(db, 'profiles', currentProfile, 'logs'), limit(100));
-      const snap = await getDocs(logsQuery);
-      let entries = snap.docs.map(d=>d.data());
-      entries.sort((a,b)=>b.perHour - a.perHour);
-      const labels = entries.map(e=>e.location);
-      const data = entries.map(e=>e.perHour);
-      const diffs = data.map((v,i)=>i?((v-data[i-1])/data[i-1]*100).toFixed(1):0);
-      const oldChart = Chart.getChart('statsChart'); if (oldChart) { oldChart.destroy(); }
-      const ctx = $('statsChart').getContext('2d');
-      new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Аден/ч',data}]},options:{responsive:true,scales:{y:{beginAtZero:true}},plugins:{tooltip:{callbacks:{label:ctx=>`${ctx.dataset.data[ctx.dataIndex].toLocaleString('ru-RU')} аден/ч (${diffs[ctx.dataIndex]>=0?'+':''}${diffs[ctx.dataIndex]}%)`}}}}});
-    };
-    const closeStats = () => { $('statsOverlay').classList.remove('active'); };
-    const toggleTheme = () => {
-      const isDark = document.body.classList.toggle('dark');
-      $('toggle-theme').innerHTML = isDark ? '☀️' : '🌙';
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    };
-    const openProfileManager = async () => {
+          if (snap.empty) {
+            hist.innerHTML = '<p><em>Пока пусто</em></p>';
+            return;
+          }
+          hist.innerHTML = snap.docs.map(doc => {
+            const { location, perHour, ts } = doc.data();
+            const date = ts ? ts.toDate().toLocaleString('ru-RU') : 'недавно';
+            const textToCopy = `Локация: ${location}\nАден/час: ${perHour.toLocaleString('ru-RU')}\nДата: ${date}`;
+            return `<div class="entry">
+                      <div class="entry-info">
+                        <span>${location} — ${formatAdenaShort(perHour)} аден/ч</span>
+                        <span>${date}</span>
+                      </div>
+                      <div class="entry-buttons">
+                        <button class="entry-btn" onclick="app.copyHistoryEntry(\`${textToCopy}\`)" title="Копировать"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path></svg></button>
+                        <button class="entry-btn del-btn" onclick="app.deleteEntry('${doc.id}')" title="Удалить">✕</button>
+                      </div>
+                    </div>`;
+          }).join('');
+        }, error => {
+          console.error("Ошибка подписки:", error);
+          hist.innerHTML = '<p><em>Не удалось загрузить историю.</em></p>';
+        });
+      };
+
+      const openStats = async () => {
+        if (!currentProfile) return;
+        $('statsOverlay').classList.add('active');
+        const logsQuery = query(collection(db, 'profiles', currentProfile, 'logs'), limit(100));
+        const snap = await getDocs(logsQuery);
+        let entries = snap.docs.map(d => d.data());
+        entries.sort((a,b) => b.perHour - a.perHour);
+        const labels = entries.map(e => e.location);
+        const data = entries.map(e => e.perHour);
+        const oldChart = Chart.getChart('statsChart');
+        if (oldChart) { oldChart.destroy(); }
+        const ctx = $('statsChart').getContext('2d');
+        new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Аден/ч', data }] }, options: { responsive: true, scales: { y: { beginAtZero: true } } } });
+      };
+
+      const closeStats = () => { $('statsOverlay').classList.remove('active'); };
+
+      const toggleTheme = () => {
+        const isDark = document.body.classList.toggle('dark');
+        $('toggle-theme').innerHTML = isDark ? '☀️' : '🌙';
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      };
+
+      const openProfileManager = async () => {
         $('profileOverlay').classList.add('active');
         const profileListDiv = $('profile-list');
         profileListDiv.innerHTML = 'Загрузка...';
         try {
-            const profilesCollection = collection(db, 'profiles');
-            const snap = await getDocs(profilesCollection);
-            if (snap.empty) {
-                profileListDiv.innerHTML = 'Профилей пока нет.';
-                return;
-            }
-            // ИЗМЕНЕНО: Добавляем класс .profile-name-btn к кнопке
-            profileListDiv.innerHTML = snap.docs.map(doc => `
-              <div class="profile-entry">
-                <button class="btn-primary profile-name-btn" onclick="selectProfile('${doc.id}')">${doc.id}</button>
-                <button class="profile-delete-btn" onclick="deleteProfile('${doc.id}')" title="Удалить профиль">✕</button>
-              </div>
-            `).join('');
-        } catch (e) {
-            console.error("Ошибка загрузки профилей:", e);
-            profileListDiv.innerHTML = 'Не удалось загрузить профили.';
-        }
-    };
-    const closeProfileManager = () => { $('profileOverlay').classList.remove('active'); };
-    const selectProfile = (profileName) => {
+          const snap = await getDocs(collection(db, 'profiles'));
+          profileListDiv.innerHTML = snap.docs.map(doc => `<div class="profile-entry"><button class="btn-primary profile-name-btn" onclick="app.selectProfile('${doc.id}')">${doc.id}</button><button class="profile-delete-btn" onclick="app.deleteProfile('${doc.id}')" title="Удалить профиль">✕</button></div>`).join('') || 'Профилей пока нет.';
+        } catch (e) { console.error("Ошибка загрузки профилей:", e); }
+      };
+
+      const closeProfileManager = () => { $('profileOverlay').classList.remove('active'); };
+
+      const selectProfile = (profileName) => {
         currentProfile = profileName;
         localStorage.setItem('adenafarm_currentProfile', profileName);
         updateUiForProfile();
         closeProfileManager();
-    };
-    const createNewProfile = async () => {
+      };
+
+      const createNewProfile = async () => {
         const newNameInput = $('new-profile-name');
         const newName = newNameInput.value.trim();
-        if (!newName) { alert('Имя профиля не может быть пустым.'); return; }
+        if (!newName) { showToast('Имя профиля не может быть пустым.'); return; }
         await setDoc(doc(db, 'profiles', newName), {});
         newNameInput.value = '';
         selectProfile(newName);
-    };
-    const deleteProfile = async (profileName) => {
-      if (!confirm(`Вы уверены, что хотите удалить профиль "${profileName}"? Все связанные с ним данные будут стерты безвозвратно.`)) {
-        return;
-      }
-      try {
-        const logsQuery = query(collection(db, 'profiles', profileName, 'logs'));
-        const logsSnapshot = await getDocs(logsQuery);
-        const deletePromises = logsSnapshot.docs.map(logDoc => deleteDoc(logDoc.ref));
-        await Promise.all(deletePromises);
-        await deleteDoc(doc(db, 'profiles', profileName));
-        
-        if (currentProfile === profileName) {
-          currentProfile = null;
-          localStorage.removeItem('adenafarm_currentProfile');
-          updateUiForProfile();
-        }
-        await openProfileManager();
-      } catch (e) {
-        console.error("Ошибка при удалении профиля: ", e);
-        alert("Не удалось удалить профиль.");
-      }
-    };
-    const updateUiForProfile = () => {
+      };
+
+      const deleteProfile = async (profileName) => {
+        if (!confirm(`Вы уверены, что хотите удалить профиль "${profileName}"?`)) { return; }
+        try {
+          const logsQuery = query(collection(db, 'profiles', profileName, 'logs'));
+          const logsSnapshot = await getDocs(logsQuery);
+          await Promise.all(logsSnapshot.docs.map(logDoc => deleteDoc(logDoc.ref)));
+          await deleteDoc(doc(db, 'profiles', profileName));
+          if (currentProfile === profileName) {
+            currentProfile = null;
+            localStorage.removeItem('adenafarm_currentProfile');
+            updateUiForProfile();
+          }
+          await openProfileManager();
+        } catch (e) { console.error("Ошибка при удалении профиля: ", e); }
+      };
+
+      const updateUiForProfile = () => {
         const formElements = ['location', 'adena', 'minutes', 'save-btn', 'stats-btn'];
         if (currentProfile) {
-            $('profile-status').textContent = `Текущий профиль: ${currentProfile}`;
-            formElements.forEach(id => $(id).disabled = false);
-            subscribeHistory(currentProfile);
+          $('profile-status').textContent = `Текущий профиль: ${currentProfile}`;
+          formElements.forEach(id => $(id).disabled = false);
+          subscribeHistory(currentProfile);
         } else {
-            $('profile-status').textContent = 'Пожалуйста, выберите или создайте профиль.';
-            $('history-list').innerHTML = '<p><em>Выберите профиль, чтобы увидеть историю.</em></p>';
-            if (historyUnsubscribe) historyUnsubscribe();
-            formElements.forEach(id => $(id).disabled = true);
+          $('profile-status').textContent = 'Пожалуйста, выберите или создайте профиль.';
+          $('history-list').innerHTML = '<p><em>Пока пусто</em></p>';
+          if (historyUnsubscribe) historyUnsubscribe();
+          formElements.forEach(id => $(id).disabled = true);
         }
+      };
+
+      const init = () => {
+        if (localStorage.getItem('theme') === 'dark') {
+          document.body.classList.add('dark');
+        }
+        $('toggle-theme').innerHTML = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        $('adena').addEventListener('input', calculate);
+        $('minutes').addEventListener('input', calculate);
+        $('minutes').addEventListener('keyup', e => { if (e.key === 'Enter') saveResult(); });
+        const savedProfile = localStorage.getItem('adenafarm_currentProfile');
+        if (savedProfile) {
+          currentProfile = savedProfile;
+        }
+        updateUiForProfile();
+      };
+
+      return {
+        init, saveResult, openStats, closeStats, deleteEntry, toggleTheme,
+        openProfileManager, closeProfileManager, selectProfile, createNewProfile, deleteProfile,
+        copyResult, copyHistoryEntry
+      };
     };
 
-    Object.assign(window, {
-      saveResult, openStats, closeStats, deleteEntry, toggleTheme,
-      openProfileManager, closeProfileManager, selectProfile, createNewProfile, deleteProfile
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-      if (localStorage.getItem('theme') === 'dark') {
-          document.body.classList.add('dark');
-      }
-      $('toggle-theme').innerHTML = document.body.classList.contains('dark') ? '☀️' : '🌙';
-      
-      $('adena').addEventListener('input', calculate);
-      $('minutes').addEventListener('input', calculate);
-      $('minutes').addEventListener('keyup', e => { if (e.key === 'Enter') saveResult(); });
-
-      const savedProfile = localStorage.getItem('adenafarm_currentProfile');
-      if (savedProfile) {
-        currentProfile = savedProfile;
-      }
-      updateUiForProfile();
-    });
+    window.app = appModule();
+    document.addEventListener('DOMContentLoaded', window.app.init);
   </script>
 </body>
 </html>
