@@ -2,8 +2,6 @@ const CACHE_NAME = 'l2-calculator-cache-v1';
 const urlsToCache = [
   '/',
   '/index.html',
-  // Добавьте сюда пути к вашим CSS и JS файлам, если они отдельные
-  // Например: '/style.css', '/app.js'
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   'https://cdn.jsdelivr.net/npm/chart.js'
