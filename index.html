@@ -16,7 +16,7 @@
     :root {
       --bg-light: #f7f9fc; --bg-dark: #1c1c1c; --panel-light: #ffffff; --panel-dark: #262626;
       --text-light: #333333; --text-dark: #e1e1e1; --accent: #3a8dde; --accent-hover: #3274c8;
-      --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.2s;
+      --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.3s;
       --font-base: 16px; --line-h: 1.6; --toggle-size: 46px;
       --text-secondary-light: #aaa; --text-secondary-dark: #777;
     }
@@ -115,15 +115,20 @@
     .site-footer { width: 100%; text-align: center; padding: var(--spacing) 0; margin-top: 40px; color: var(--text-secondary-light); }
     body.dark .site-footer { color: var(--text-secondary-dark); }
     .site-footer p { margin: 0; font-family: 'Caveat', cursive; font-size: 1.3rem; font-weight: 700; }
+    
+    body.dark .swal2-popup { background: var(--panel-dark) !important; color: var(--text-dark) !important; }
+    body.dark .swal2-title { color: var(--text-dark) !important; }
+    body.dark .swal2-html-container, body.dark .swal2-content { color: var(--text-dark) !important; }
+    .tippy-box[data-theme~='dark'] { background-color: #333; color: #fff; }
+    .tippy-box[data-theme~='dark'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #333; }
+    .tippy-box[data-theme~='dark'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #333; }
+
     @media (max-width: 800px) { .container { display: block; margin-top: 140px; } .history { margin-top: var(--spacing); } }
   </style>
 </head>
 <body>
   <script>
-    // Этот скрипт выполняется до загрузки остальной страницы, чтобы предотвратить "моргание"
     (function() {
-      // Если в localStorage выбрана светлая тема - ничего не делаем.
-      // Во всех остальных случаях (выбрана темная или еще ничего не выбрано) - включаем темную.
       if (localStorage.getItem('theme') !== 'light') {
         document.body.classList.add('dark');
       }
@@ -367,6 +372,7 @@
         const isDark = document.body.classList.toggle('dark');
         $('toggle-theme').innerHTML = isDark ? '☀️' : '🌙';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        tippy.setDefaultProps({ theme: isDark ? 'dark' : 'light' });
       };
 
       const openProfileManager = async () => {
@@ -463,14 +469,19 @@
               },
               detectRetina: true,
           });
-          tippy('[data-tippy-content]');
+          tippy('[data-tippy-content]', {
+             theme: document.body.classList.contains('dark') ? 'dark' : 'light'
+          });
       };
 
       const init = () => {
-        if (localStorage.getItem('theme') !== 'light') {
-          document.body.classList.add('dark');
+        const themeToggleButton = $('toggle-theme');
+        if (document.body.classList.contains('dark')) {
+          themeToggleButton.innerHTML = '☀️';
+        } else {
+          themeToggleButton.innerHTML = '🌙';
         }
-        $('toggle-theme').innerHTML = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        
         $('adena').addEventListener('input', calculate);
         $('minutes').addEventListener('input', calculate);
         $('minutes').addEventListener('keyup', e => { if (e.key === 'Enter') saveResult(); });
