@@ -11,6 +11,8 @@
   
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  
+  <link rel="stylesheet" href="https://unpkg.com/photoswipe@5/dist/photoswipe.css">
 
   <style>
     :root {
@@ -89,18 +91,19 @@
     .history { max-height: 70vh; overflow-y: auto; }
     .entry { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px; margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius); transition: background var(--transition); }
     body.dark .entry { background: rgba(255,255,255,0.05); }
-    .entry-info { display: flex; flex-direction: column; flex-grow: 1; }
-    .entry-info span { display: inline-flex; align-items: center; gap: 4px; }
-    .entry-info span:first-child { font-weight: 600; }
-    .entry-info span:last-child { font-size: 0.875rem; color: #666; transition: color var(--transition); }
-    body.dark .entry-info span:last-child { color: #aaa; }
+    .entry-info { display: flex; align-items: center; gap: 12px; flex-grow: 1; }
+    .entry-thumbnail { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; cursor: pointer; }
+    .entry-details { display: flex; flex-direction: column; justify-content: center; }
+    .entry-details span:first-child { font-weight: 600; }
+    .entry-details span:last-child { font-size: 0.875rem; color: #666; }
+    body.dark .entry-details span:last-child { color: #aaa; }
     .entry-buttons { display: flex; align-items: center; gap: 4px; }
     .entry-btn { flex: none; width: 30px; height: 30px; padding: 0; background: none; border: none; opacity: 0.5; transition: opacity 0.2s; cursor: pointer; }
     .entry-btn:hover { opacity: 1; }
     .entry-btn svg { width: 16px; height: 16px; fill: var(--text-light); }
     body.dark .entry-btn svg { fill: var(--text-dark); }
     .del-btn { color: var(--error); font-size: 1.5rem; line-height: 1; }
-    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .overlay.active { display: flex; }
     .modal { background: var(--panel-light); padding: var(--spacing); border-radius: var(--radius); max-width: 600px; width: 90%; box-shadow: 0 2px 12px rgba(0,0,0,0.2); position: relative; }
     body.dark .modal { background: var(--panel-dark); }
@@ -115,6 +118,14 @@
     .site-footer { width: 100%; text-align: center; padding: var(--spacing) 0; margin-top: 40px; color: var(--text-secondary-light); }
     body.dark .site-footer { color: var(--text-secondary-dark); }
     .site-footer p { margin: 0; font-family: 'Caveat', cursive; font-size: 1.3rem; font-weight: 700; }
+    .upload-area { display: flex; align-items: center; gap: 10px; }
+    #upload-btn { flex: 0 0 auto; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+    #image-preview-container { position: relative; }
+    #image-preview { max-width: 80px; max-height: 40px; border-radius: 4px; display: none; }
+    #remove-image-btn { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; background: var(--error); color: white; border: none; border-radius: 50%; font-size: 12px; font-weight: bold; cursor: pointer; display: none; justify-content: center; align-items: center; }
+    
+    .pswp__bg { background: rgba(0, 0, 0, 0.9) !important; }
+    .pswp__caption__center { text-align: center; }
     
     body.dark .swal2-popup { background: var(--panel-dark) !important; color: var(--text-dark) !important; }
     body.dark .swal2-title { color: var(--text-dark) !important; }
@@ -122,7 +133,6 @@
     .tippy-box[data-theme~='dark'] { background-color: #333; color: #fff; }
     .tippy-box[data-theme~='dark'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #333; }
     .tippy-box[data-theme~='dark'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #333; }
-
     @media (max-width: 800px) { .container { display: block; margin-top: 140px; } .history { margin-top: var(--spacing); } }
   </style>
 </head>
@@ -157,6 +167,17 @@
         <label for="minutes">Время в минутах</label>
         <input id="minutes" type="number" placeholder="Время (мин)" disabled/>
       </div>
+      <div class="field">
+        <label>Скриншот (необязательно)</label>
+        <div class="upload-area">
+          <button id="upload-btn" class="btn-primary" disabled>🖼️</button>
+          <input id="image-upload" type="file" accept="image/*" style="display: none;">
+          <div id="image-preview-container">
+              <img id="image-preview" src="">
+              <button id="remove-image-btn">✕</button>
+          </div>
+        </div>
+      </div>
       <div class="buttons">
         <button id="save-btn" class="btn-primary" onclick="app.saveResult()" disabled>Сохранить</button>
         <button id="stats-btn" class="btn-primary" onclick="app.openStats()" disabled>Статистика</button>
@@ -187,6 +208,7 @@
       <button class="btn-primary" onclick="app.createNewProfile()">Создать и выбрать</button>
     </div>
   </div>
+
   <footer class="site-footer">
     <p>Калькулятор аден by EvilBlack</p>
   </footer>
@@ -195,11 +217,15 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://unpkg.com/@popperjs/core@2"></script>
   <script src="https://unpkg.com/tippy.js@6"></script>
-  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
   <script type="module">
+    import PhotoSwipeLightbox from 'https://unpkg.com/photoswipe@5/dist/photoswipe-lightbox.esm.js';
+    import PhotoSwipe from 'https://unpkg.com/photoswipe@5/dist/photoswipe.esm.js';
+
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
     import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
     import { formatDistanceToNow } from 'https://cdn.skypack.dev/date-fns@2';
     import { ru } from 'https://cdn.skypack.dev/date-fns/locale';
 
@@ -213,13 +239,17 @@
     };
     
     const appModule = () => {
-      initializeApp(firebaseConfig);
-      const db = getFirestore();
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const storage = getStorage(app);
       const $ = id => document.getElementById(id);
 
       let currentProfile = null;
       let historyUnsubscribe = null;
       let currentPerHourResult = null;
+      
+      let lightbox = null;
+      let historyImageDataSource = [];
 
       const formatAdenaShort = (num) => {
         if (num >= 1000000000) return `${parseFloat((num / 1000000000).toFixed(2))}ккк`;
@@ -285,21 +315,87 @@
         return currentPerHourResult;
       };
 
+      const uploadImage = (file, onProgress) => {
+        return new Promise((resolve, reject) => {
+            if (!currentProfile) {
+                return reject(new Error("Профиль не выбран для загрузки изображения"));
+            }
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2);
+            const imagePath = `images/${currentProfile}/${timestamp}-${randomId}-${file.name}`;
+            const storageRef = ref(storage, imagePath);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    onProgress(progress);
+                }, 
+                (error) => {
+                    console.error("Upload failed:", error);
+                    reject(error);
+                }, 
+                async () => {
+                    try {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        resolve({ imageUrl: downloadURL, imagePath: imagePath });
+                    } catch (error) {
+                        reject(error);
+                    }
+                }
+            );
+        });
+      };
+
       const saveResult = async () => {
         if (!currentProfile) { Swal.fire('Ошибка', 'Сначала выберите профиль', 'error'); return; }
         const perHour = calculate();
         if (!perHour) { Swal.fire('Ошибка', 'Введите корректные значения', 'error'); return; }
+
+        const saveBtn = $('save-btn');
+        saveBtn.disabled = true;
+        
+        let uploadResult = { imageUrl: null, imagePath: null };
+        const imageFile = $('image-upload').files[0];
+
+        if (imageFile) {
+            try {
+                const onProgress = (progress) => {
+                    saveBtn.textContent = `Загрузка ${Math.round(progress)}%`;
+                };
+                saveBtn.textContent = 'Загрузка 0%';
+                uploadResult = await uploadImage(imageFile, onProgress);
+            } catch (error) {
+                Swal.fire('Ошибка загрузки', 'Не удалось загрузить изображение. Запись будет сохранена без него.', 'warning');
+            }
+        }
+        
+        saveBtn.textContent = 'Сохранение...';
+        
         try {
           await addDoc(collection(db, 'profiles', currentProfile, 'logs'), {
-            location: ($('location').value || 'Без локации').trim(), perHour, ts: serverTimestamp()
+            location: ($('location').value || 'Без локации').trim(),
+            perHour,
+            ts: serverTimestamp(),
+            imageUrl: uploadResult.imageUrl,
+            imagePath: uploadResult.imagePath
           });
           Swal.fire({ icon: 'success', title: 'Сохранено!', showConfirmButton: false, timer: 1500 });
-          $('adena').value = ''; $('minutes').value = ''; $('location').value = '';
+          $('adena').value = '';
+          $('minutes').value = '';
+          $('location').value = '';
+          removePreviewImage();
           calculate();
-        } catch(e) { console.error("Ошибка сохранения: ", e); }
+        } catch(e) { 
+            console.error("Ошибка сохранения: ", e); 
+            Swal.fire('Ошибка!', 'Не удалось сохранить запись.', 'error');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Сохранить';
+        }
       };
       
-      const deleteEntry = async (id) => {
+      const deleteEntry = async (id, imagePath) => {
         if (!currentProfile) return;
         Swal.fire({
             title: 'Удалить запись?',
@@ -314,9 +410,12 @@
             if (result.isConfirmed) {
                 try { 
                     await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); 
+                    if(imagePath && imagePath !== 'null' && imagePath !== 'undefined') {
+                        const imageRef = ref(storage, imagePath);
+                        await deleteObject(imageRef);
+                    }
                     Swal.fire('Удалено!', 'Запись была удалена.', 'success');
                 } catch(e) { 
-                    console.error("Ошибка удаления: ", e); 
                     Swal.fire('Ошибка!', 'Не удалось удалить запись.', 'error');
                 }
             }
@@ -328,19 +427,38 @@
         const hist = $('history-list');
         const logsQuery = query(collection(db, 'profiles', profileName, 'logs'), orderBy('ts', 'desc'), limit(100));
         historyUnsubscribe = onSnapshot(logsQuery, snap => {
+          
+          historyImageDataSource = snap.docs
+            .map(doc => doc.data())
+            .filter(item => item.imageUrl)
+            .map(item => ({
+              src: item.imageUrl,
+              width: 0,
+              height: 0,
+              html: `${item.location} &mdash; ${formatAdenaShort(item.perHour)} аден/ч`
+            }));
+          
           hist.innerHTML = snap.docs.map(doc => {
-            const { location, perHour, ts } = doc.data();
+            const { location, perHour, ts, imageUrl, imagePath } = doc.data();
             const date = ts ? formatDistanceToNow(ts.toDate(), { addSuffix: true, locale: ru }) : 'недавно';
             const fullDate = ts ? ts.toDate().toLocaleString('ru-RU') : '';
             const textToCopy = `Локация: ${location}\nАден/час: ${perHour.toLocaleString('ru-RU')}\nДата: ${fullDate}`;
+            
+            const imageHtml = imageUrl 
+              ? `<img class="entry-thumbnail" src="${imageUrl}" alt="Скриншот для: ${location}" onclick="app.openGallery('${imageUrl}')">`
+              : '';
+            
             return `<div class="entry">
                       <div class="entry-info">
-                        <span>${location} — ${formatAdenaShort(perHour)} аден/ч</span>
-                        <span data-tippy-content="${fullDate}">${date}</span>
+                        ${imageHtml}
+                        <div class="entry-details">
+                            <span>${location} — ${formatAdenaShort(perHour)} аден/ч</span>
+                            <span data-tippy-content="${fullDate}">${date}</span>
+                        </div>
                       </div>
                       <div class="entry-buttons">
                         <button class="entry-btn" data-tippy-content="Копировать" onclick="app.copyHistoryEntry(\`${textToCopy}\`)"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path></svg></button>
-                        <button class="entry-btn del-btn" data-tippy-content="Удалить" onclick="app.deleteEntry('${doc.id}')">✕</button>
+                        <button class="entry-btn del-btn" data-tippy-content="Удалить" onclick="app.deleteEntry('${doc.id}', '${imagePath}')">✕</button>
                       </div>
                     </div>`;
           }).join('') || '<p><em>Пока пусто</em></p>';
@@ -352,7 +470,6 @@
       };
 
       const openStats = async () => {
-        if (!currentProfile) return;
         $('statsOverlay').classList.add('active');
         const logsQuery = query(collection(db, 'profiles', currentProfile, 'logs'), limit(100));
         const snap = await getDocs(logsQuery);
@@ -376,13 +493,13 @@
       };
 
       const openProfileManager = async () => {
-        $('profileOverlay').classList.add('active');
-        const profileListDiv = $('profile-list');
-        profileListDiv.innerHTML = 'Загрузка...';
-        try {
-          const snap = await getDocs(collection(db, 'profiles'));
-          profileListDiv.innerHTML = snap.docs.map(doc => `<div class="profile-entry"><button class="btn-primary profile-name-btn" onclick="app.selectProfile('${doc.id}')">${doc.id}</button><button class="profile-delete-btn" onclick="app.deleteProfile('${doc.id}')" title="Удалить профиль">✕</button></div>`).join('') || 'Профилей пока нет.';
-        } catch (e) { console.error("Ошибка загрузки профилей:", e); }
+          $('profileOverlay').classList.add('active');
+          const profileListDiv = $('profile-list');
+          profileListDiv.innerHTML = 'Загрузка...';
+          try {
+            const snap = await getDocs(collection(db, 'profiles'));
+            profileListDiv.innerHTML = snap.docs.map(doc => `<div class="profile-entry"><button class="btn-primary profile-name-btn" onclick="app.selectProfile('${doc.id}')">${doc.id}</button><button class="profile-delete-btn" onclick="app.deleteProfile('${doc.id}')" title="Удалить профиль">✕</button></div>`).join('') || 'Профилей пока нет.';
+          } catch (e) { console.error("Ошибка загрузки профилей:", e); }
       };
 
       const closeProfileManager = () => { $('profileOverlay').classList.remove('active'); };
@@ -425,15 +542,15 @@
                     localStorage.removeItem('adenafarm_currentProfile');
                     updateUiForProfile();
                   }
-                  await openProfileManager();
-                   Swal.fire('Удалено!', `Профиль ${profileName} был удален.`, 'success');
+                  closeProfileManager(); 
+                  openProfileManager(); 
                 } catch (e) { console.error("Ошибка при удалении профиля: ", e); }
             }
         });
       };
 
       const updateUiForProfile = () => {
-        const formElements = ['location', 'adena', 'minutes', 'save-btn', 'stats-btn'];
+        const formElements = ['location', 'adena', 'minutes', 'save-btn', 'stats-btn', 'upload-btn'];
         if (currentProfile) {
           $('profile-status').textContent = `Текущий профиль: ${currentProfile}`;
           formElements.forEach(id => $(id).disabled = false);
@@ -447,31 +564,82 @@
       };
       
       const initLibs = () => {
-          tsParticles.load("tsparticles", {
-              fpsLimit: 60,
-              interactivity: {
-                  events: {
-                      onHover: { enable: true, mode: "repulse" },
-                      resize: true,
-                  },
-                  modes: {
-                      repulse: { distance: 60, duration: 0.4 },
-                  },
-              },
-              particles: {
-                  color: { value: "#888" },
-                  links: { color: "#888", distance: 150, enable: true, opacity: 0.2, width: 1 },
-                  move: { direction: "none", enable: true, outModes: { default: "bounce" }, random: true, speed: 1, straight: false },
-                  number: { density: { enable: true, area: 800 }, value: 80 },
-                  opacity: { value: 0.2 },
-                  shape: { type: "circle" },
-                  size: { value: { min: 1, max: 3 } },
-              },
-              detectRetina: true,
-          });
-          tippy('[data-tippy-content]', {
-             theme: document.body.classList.contains('dark') ? 'dark' : 'light'
-          });
+          tsParticles.load("tsparticles",{fpsLimit:60,interactivity:{events:{onHover:{enable:!0,mode:"repulse"},resize:!0},modes:{repulse:{distance:60,duration:.4}}},particles:{color:{value:"#888"},links:{color:"#888",distance:150,enable:!0,opacity:.2,width:1},move:{direction:"none",enable:!0,outModes:{default:"bounce"},random:!0,speed:1,straight:!1},number:{density:{enable:!0,area:800},value:80},opacity:{value:.2},shape:{type:"circle"},size:{value:{min:1,max:3}}},detectRetina:!0});
+          tippy('[data-tippy-content]', { theme: document.body.classList.contains('dark') ? 'dark' : 'light' });
+      };
+      
+      const previewImage = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            $('image-preview').src = e.target.result;
+            $('image-preview').style.display = 'block';
+            $('remove-image-btn').style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const removePreviewImage = () => {
+        document.getElementById("image-upload").value = "";
+        document.getElementById("image-preview").src = "";
+        document.getElementById("image-preview").style.display = "none";
+        document.getElementById("remove-image-btn").style.display = "none";
+      };
+      
+      const _openPhotoSwipeInstance = (index) => {
+        if (lightbox) {
+            lightbox.destroy();
+            lightbox = null;
+        }
+        lightbox = new PhotoSwipeLightbox({
+            dataSource: historyImageDataSource,
+            pswpModule: PhotoSwipe,
+            
+            // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
+            initialZoomLevel: 'fill', // 1. Устанавливаем начальный зум
+            wheelToZoom: true, // 2. Включаем зум колесиком
+        });
+
+        // Обработчик для закрытия по клику на фон
+        lightbox.on('click', (e) => {
+            if (e.originalEvent.target === e.bg) {
+                lightbox.pswp.close();
+            }
+        });
+
+        lightbox.init();
+        lightbox.loadAndOpen(index);
+      };
+
+      const openGallery = (clickedImageUrl) => {
+        const itemIndex = historyImageDataSource.findIndex(item => item.src === clickedImageUrl);
+        if (itemIndex < 0) return;
+
+        const item = historyImageDataSource[itemIndex];
+
+        if (item.width > 0 && item.height > 0) {
+            _openPhotoSwipeInstance(itemIndex);
+            return;
+        }
+
+        Swal.fire({
+            title: 'Загрузка изображения...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        const img = new Image();
+        img.src = item.src;
+        img.onload = () => {
+            item.width = img.naturalWidth;
+            item.height = img.naturalHeight;
+            Swal.close();
+            _openPhotoSwipeInstance(itemIndex);
+        };
+        img.onerror = () => {
+            Swal.fire('Ошибка', 'Не удалось загрузить изображение.', 'error');
+        };
       };
 
       const init = () => {
@@ -485,9 +653,13 @@
         $('adena').addEventListener('input', calculate);
         $('minutes').addEventListener('input', calculate);
         $('minutes').addEventListener('keyup', e => { if (e.key === 'Enter') saveResult(); });
+        $('upload-btn').addEventListener('click', () => $('image-upload').click());
+        $('image-upload').addEventListener('change', previewImage);
+        $('remove-image-btn').addEventListener('click', removePreviewImage);
+
         const savedProfile = localStorage.getItem('adenafarm_currentProfile');
         if (savedProfile) {
-          currentProfile = savedProfile;
+            currentProfile = savedProfile;
         }
         updateUiForProfile();
         initLibs();
@@ -496,7 +668,8 @@
       return {
         init, saveResult, openStats, closeStats, deleteEntry, toggleTheme,
         openProfileManager, closeProfileManager, selectProfile, createNewProfile, deleteProfile,
-        copyResult, copyHistoryEntry
+        copyResult, copyHistoryEntry,
+        openGallery
       };
     };
 
