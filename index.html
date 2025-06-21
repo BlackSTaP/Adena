@@ -437,7 +437,7 @@
               particles: {
                   color: { value: "#888" },
                   links: { color: "#888", distance: 150, enable: true, opacity: 0.2, width: 1 },
-                  move: { direction: "none", enable: true, outModes: { default: "bounce" }, random: false, speed: 1, straight: false },
+                  move: { direction: "none", enable: true, outModes: { default: "bounce" }, random: true, speed: 1, straight: false },
                   number: { density: { enable: true, area: 800 }, value: 80 },
                   opacity: { value: 0.2 },
                   shape: { type: "circle" },
@@ -449,7 +449,7 @@
       };
 
       const init = () => {
-        if (localStorage.getItem('theme') === 'dark') {
+        if (localStorage.getItem('theme') !== 'light') {
           document.body.classList.add('dark');
         }
         $('toggle-theme').innerHTML = document.body.classList.contains('dark') ? '☀️' : '🌙';
