@@ -224,8 +224,8 @@
     import PhotoSwipe from 'https://unpkg.com/photoswipe@5/dist/photoswipe.esm.js';
 
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    // УДАЛЯЕМ ВСЕ ИЗ `firebase/storage`, ОСТАВЛЯЕМ ТОЛЬКО FIRESTORE
     import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-    import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
     import { formatDistanceToNow } from 'https://cdn.skypack.dev/date-fns@2';
     import { ru } from 'https://cdn.skypack.dev/date-fns/locale';
 
@@ -241,7 +241,7 @@
     const appModule = () => {
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
-      const storage = getStorage(app);
+      // const storage = getStorage(app); // Больше не нужно
       const $ = id => document.getElementById(id);
 
       let currentProfile = null;
@@ -315,35 +315,34 @@
         return currentPerHourResult;
       };
 
-      const uploadImage = (file, onProgress) => {
-        return new Promise((resolve, reject) => {
-            if (!currentProfile) {
-                return reject(new Error("Профиль не выбран для загрузки изображения"));
-            }
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).substring(2);
-            const imagePath = `images/${currentProfile}/${timestamp}-${randomId}-${file.name}`;
-            const storageRef = ref(storage, imagePath);
-            const uploadTask = uploadBytesResumable(storageRef, file);
+      // --- НОВАЯ ФУНКЦИЯ ЗАГРУЗКИ НА IMG BB ---
+      const uploadImage = (file) => {
+        return new Promise(async (resolve, reject) => {
+            const apiKey = '44f074dba40801102ee798981810ec76';
+            const formData = new FormData();
+            formData.append('image', file);
 
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    onProgress(progress);
-                }, 
-                (error) => {
-                    console.error("Upload failed:", error);
-                    reject(error);
-                }, 
-                async () => {
-                    try {
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                        resolve({ imageUrl: downloadURL, imagePath: imagePath });
-                    } catch (error) {
-                        reject(error);
-                    }
+            try {
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Возвращаем объект, похожий на тот, что был раньше
+                    resolve({ 
+                      imageUrl: result.data.url, 
+                      imagePath: result.data.delete_url // Сохраняем ссылку на удаление в поле imagePath
+                    });
+                } else {
+                    reject(new Error(result.error.message || 'Ошибка при загрузке на ImgBB'));
                 }
-            );
+            } catch (error) {
+                console.error("Ошибка сети при загрузке на ImgBB:", error);
+                reject(error);
+            }
         });
       };
 
@@ -360,13 +359,14 @@
 
         if (imageFile) {
             try {
-                const onProgress = (progress) => {
-                    saveBtn.textContent = `Загрузка ${Math.round(progress)}%`;
-                };
-                saveBtn.textContent = 'Загрузка 0%';
-                uploadResult = await uploadImage(imageFile, onProgress);
+                saveBtn.textContent = 'Загрузка...';
+                // Вызываем новую функцию без колбэка прогресса
+                uploadResult = await uploadImage(imageFile);
             } catch (error) {
-                Swal.fire('Ошибка загрузки', 'Не удалось загрузить изображение. Запись будет сохранена без него.', 'warning');
+                Swal.fire('Ошибка загрузки', error.message || 'Не удалось загрузить изображение.', 'error');
+                saveBtn.textContent = 'Сохранить';
+                saveBtn.disabled = false;
+                return;
             }
         }
         
@@ -378,7 +378,7 @@
             perHour,
             ts: serverTimestamp(),
             imageUrl: uploadResult.imageUrl,
-            imagePath: uploadResult.imagePath
+            imagePath: uploadResult.imagePath // Здесь теперь будет ссылка на удаление
           });
           Swal.fire({ icon: 'success', title: 'Сохранено!', showConfirmButton: false, timer: 1500 });
           $('adena').value = '';
@@ -410,10 +410,7 @@
             if (result.isConfirmed) {
                 try { 
                     await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); 
-                    if(imagePath && imagePath !== 'null' && imagePath !== 'undefined') {
-                        const imageRef = ref(storage, imagePath);
-                        await deleteObject(imageRef);
-                    }
+                    // Удаление файла с хостинга убрано, т.к. это небезопасно с клиента
                     Swal.fire('Удалено!', 'Запись была удалена.', 'success');
                 } catch(e) { 
                     Swal.fire('Ошибка!', 'Не удалось удалить запись.', 'error');
@@ -595,13 +592,10 @@
         lightbox = new PhotoSwipeLightbox({
             dataSource: historyImageDataSource,
             pswpModule: PhotoSwipe,
-            
-            // --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
-            initialZoomLevel: 'fill', // 1. Устанавливаем начальный зум
-            wheelToZoom: true, // 2. Включаем зум колесиком
+            initialZoomLevel: 'fill',
+            wheelToZoom: true,
         });
 
-        // Обработчик для закрытия по клику на фон
         lightbox.on('click', (e) => {
             if (e.originalEvent.target === e.bg) {
                 lightbox.pswp.close();
