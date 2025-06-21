@@ -16,7 +16,7 @@
     :root {
       --bg-light: #f7f9fc; --bg-dark: #1c1c1c; --panel-light: #ffffff; --panel-dark: #262626;
       --text-light: #333333; --text-dark: #e1e1e1; --accent: #3a8dde; --accent-hover: #3274c8;
-      --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.3s;
+      --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.2s;
       --font-base: 16px; --line-h: 1.6; --toggle-size: 46px;
       --text-secondary-light: #aaa; --text-secondary-dark: #777;
     }
@@ -40,7 +40,7 @@
       width: var(--toggle-size); height: var(--toggle-size); border-radius: 50%; padding: 0;
       background: var(--panel-light); color: var(--accent); border: 2px solid var(--accent);
       display: flex; justify-content: center; align-items: center; cursor: pointer;
-      transition: background var(--transition), color var(--transition), border-color var(--transition);
+      transition: background var(--transition), color var(--transition), border-color var(--transition), transform 0.2s, box-shadow 0.2s;
       font-size: 1.2rem;
     }
     .control-button svg { width: 50%; height: 50%; fill: var(--accent); transition: fill var(--transition); }
@@ -48,6 +48,14 @@
       background: var(--panel-dark); color: var(--accent-hover); border-color: var(--accent-hover);
     }
     body.dark .control-button svg { fill: var(--accent-hover); }
+    .control-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .control-button:active {
+        transform: translateY(0px) scale(0.95);
+        box-shadow: none;
+    }
     .container {
       display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing); max-width: 960px;
       width: 100%; margin: 120px auto 0; padding: 0 var(--spacing);
@@ -111,6 +119,16 @@
   </style>
 </head>
 <body>
+  <script>
+    // Этот скрипт выполняется до загрузки остальной страницы, чтобы предотвратить "моргание"
+    (function() {
+      // Если в localStorage выбрана светлая тема - ничего не делаем.
+      // Во всех остальных случаях (выбрана темная или еще ничего не выбрано) - включаем темную.
+      if (localStorage.getItem('theme') !== 'light') {
+        document.body.classList.add('dark');
+      }
+    })();
+  </script>
   <div id="tsparticles"></div>
   <div class="header-controls">
     <button id="profile-btn" class="control-button" data-tippy-content="Выбрать профиль" onclick="app.openProfileManager()">
