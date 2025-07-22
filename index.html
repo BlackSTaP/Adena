@@ -378,7 +378,6 @@
   <script src="https://unpkg.com/@popperjs/core@2"></script>
   <script src="https://unpkg.com/tippy.js@6"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
   
   <script type="module">
     import PhotoSwipeLightbox from 'https://unpkg.com/photoswipe@5/dist/photoswipe-lightbox.esm.js';
@@ -411,7 +410,11 @@
       let historyImageDataSource = [];
       let activeAlarms = [];
       let alarmInterval = null;
-      let alarmSound;
+      
+      // --- Web Audio API Implementation ---
+      let audioCtx;
+      let gainNode;
+      let alarmOscillatorInterval;
 
       const formatAdenaShort = (num) => {
         if (num >= 1000000000) return `${parseFloat((num / 1000000000).toFixed(2))}ккк`;
@@ -551,9 +554,7 @@
             const fullDate = ts ? ts.toDate().toLocaleString('ru-RU') : '';
             const textToCopy = `Локация: ${location}\nАден/час: ${perHour.toLocaleString('ru-RU')}\nДата: ${fullDate}`;
             
-            // Safely escape the string for use in an HTML attribute
             const escapedTextForCopy = JSON.stringify(textToCopy);
-
             const imageHtml = imageUrl ? `<img class="entry-thumbnail" src="${imageUrl}" alt="Скриншот для: ${location}" onclick="app.openGallery('${imageUrl}')">` : '';
             
             return `<div class="entry">
@@ -618,7 +619,6 @@
               }
               notesListDiv.innerHTML = snap.docs.map(doc => {
                   const note = doc.data();
-                  // Safely escape for onclick attribute
                   const escapedText = JSON.stringify(note.text);
                   return `<div class="note-entry"><span class="note-text">${note.text}</span><div class="note-buttons">
                               <button class="entry-btn" data-tippy-content="Редактировать" onclick='app.editNote("${doc.id}", ${escapedText})'>✏️</button>
@@ -633,25 +633,40 @@
       };
       
       const initAudio = () => {
-          if (alarmSound) return;
-          alarmSound = new Howl({
-              src: ['http://85.192.24.91/alarm.mp3'],
-              loop: true,
-              html5: true, // Important for broader compatibility
-              onloaderror: (id, err) => {
-                  console.error('Ошибка загрузки звука:', err);
-                  Swal.fire('Ошибка звука', 'Не удалось загрузить мелодию будильника. Проверьте ссылку или соединение.', 'error');
-              },
-              onplayerror: (id, err) => {
-                  console.error('Ошибка воспроизведения:', err);
-                  Swal.fire('Ошибка звука', 'Не удалось воспроизвести мелодию. Попробуйте взаимодействовать со страницей.', 'error');
-              }
+          if (audioCtx) return;
+          try {
+              audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+              gainNode = audioCtx.createGain();
+              gainNode.connect(audioCtx.destination);
+              setAlarmVolume($('alarm-volume').value);
+              console.log("Web Audio API context initialized.");
+          } catch (e) {
+              console.error("Web Audio API is not supported.", e);
+              Swal.fire('Ошибка звука', 'Ваш браузер не поддерживает воспроизведение звука.', 'error');
+          }
+      };
+      
+      const playAlarmSound = () => {
+          if (!audioCtx) return;
+          if (audioCtx.state === 'suspended') {
+              audioCtx.resume();
+          }
+          const now = audioCtx.currentTime;
+          const noteDuration = 0.15;
+          // C5, E5, G5, C6 - мажорный аккорд для более приятного звучания
+          const frequencies = [523.25, 659.25, 783.99, 1046.50]; 
+
+          frequencies.forEach((freq, index) => {
+              const osc = audioCtx.createOscillator();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, now + index * noteDuration);
+              osc.connect(gainNode);
+              osc.start(now + index * noteDuration);
+              osc.stop(now + (index + 1) * noteDuration);
           });
-          console.log("Audio initialized with external MP3.");
       };
 
       const triggerAlarm = (alarm) => {
-          let soundId;
           Swal.fire({
               title: `⏰ Будильник ⏰`,
               html: `<b>${alarm.label || 'Без названия'}</b><br>Время: ${alarm.time}`,
@@ -659,13 +674,14 @@
               confirmButtonText: 'Остановить',
               allowOutsideClick: false,
               didOpen: () => {
-                  if (alarmSound) {
-                      soundId = alarmSound.play();
-                  }
+                  playAlarmSound();
+                  // Интервал мелодии
+                  alarmOscillatorInterval = setInterval(playAlarmSound, 1500);
               },
               willClose: () => {
-                  if (alarmSound) {
-                      alarmSound.stop(soundId);
+                  if (alarmOscillatorInterval) {
+                      clearInterval(alarmOscillatorInterval);
+                      alarmOscillatorInterval = null;
                   }
               }
           });
@@ -778,15 +794,22 @@
       const renderPresetTimes = () => {
           const container = $('preset-times-container');
           if (!container) return;
-          container.innerHTML = '';
+          
+          const presetTimes = [];
           for (let i = 1; i <= 23; i += 2) {
-              const time = `${i.toString().padStart(2, '0')}:00`;
+              presetTimes.push(`${i.toString().padStart(2, '0')}:00`);
+          }
+          presetTimes.push('12:00', '00:00');
+          presetTimes.sort();
+
+          container.innerHTML = '';
+          presetTimes.forEach(time => {
               const btn = document.createElement('button');
               btn.className = 'preset-time-btn';
               btn.textContent = time;
               btn.onclick = () => addAlarm(time, 'Пресет');
               container.appendChild(btn);
-          }
+          });
       };
 
       const deleteAlarm = async (alarmId) => {
@@ -800,8 +823,8 @@
       };
 
       const setAlarmVolume = async (volume) => {
-          if (alarmSound) {
-              alarmSound.volume(parseFloat(volume));
+          if (gainNode) {
+              gainNode.gain.setValueAtTime(parseFloat(volume), audioCtx.currentTime);
           }
           if (currentProfile) {
             try {
@@ -885,7 +908,7 @@
 
       const toggleTheme = () => {
         const isDark = document.body.classList.toggle('dark');
-        $('toggle-theme').innerHTML = isDark ? '☀️' : '🌙';
+        $('toggle-theme').innerHTML = isDark ? '☀️' : '�';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
         tippy.setDefaultProps({ theme: isDark ? 'dark' : 'light' });
       };
@@ -1056,7 +1079,7 @@
       };
       
       const init = () => {
-        $('toggle-theme').innerHTML = document.body.classList.contains('dark') ? '☀️' : '�';
+        $('toggle-theme').innerHTML = document.body.classList.contains('dark') ? '☀️' : '🌙';
         $('adena').addEventListener('input', calculate);
         $('minutes').addEventListener('input', calculate);
         $('minutes').addEventListener('keyup', e => { if (e.key === 'Enter') saveResult(); });
