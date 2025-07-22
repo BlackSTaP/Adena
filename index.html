@@ -812,11 +812,27 @@
           presetTimes.sort();
 
           container.innerHTML = '';
-          presetTimes.forEach(time => {
+          presetTimes.forEach(displayTime => {
               const btn = document.createElement('button');
               btn.className = 'preset-time-btn';
-              btn.textContent = time;
-              btn.onclick = () => addAlarm(time, 'Пресет');
+              btn.textContent = displayTime;
+              btn.onclick = () => {
+                  const [hours, minutes] = displayTime.split(':').map(Number);
+                  
+                  let totalMinutes = hours * 60 + minutes;
+                  totalMinutes -= 2; // Subtract 2 minutes
+
+                  if (totalMinutes < 0) {
+                      totalMinutes += 24 * 60; 
+                  }
+
+                  const newHours = Math.floor(totalMinutes / 60) % 24;
+                  const newMinutes = totalMinutes % 60;
+
+                  const alarmTime = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
+                  
+                  addAlarm(alarmTime, `Пресет (${displayTime})`); 
+              };
               container.appendChild(btn);
           });
       };
@@ -915,7 +931,7 @@
         $('statsOverlay').classList.add('active');
         const logsQuery = query(collection(db, 'profiles', currentProfile, 'logs'), limit(100));
         const snap = await getDocs(logsQuery);
-        let entries = snap.docs.map(d => d.data);
+        let entries = snap.docs.map(d => d.data());
         entries.sort((a,b) => b.perHour - a.perHour);
         const labels = entries.map(e => e.location);
         const data = entries.map(e => e.perHour);
