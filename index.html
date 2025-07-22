@@ -692,7 +692,7 @@
           }).then((result) => {
               if (result.isConfirmed) {
                   updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarm.id), {
-                      isActive: false,
+                      status: 'dismissed',
                       triggeredAt: serverTimestamp()
                   });
               }
@@ -759,8 +759,10 @@
           const currentTime = `${mskHours}:${mskMinutes}`;
 
           activeAlarms.forEach(alarm => {
-              if (alarm.time === currentTime && alarm.isActive) {
-                  triggerAlarm(alarm);
+              if (alarm.time === currentTime && alarm.status === 'active') {
+                  updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarm.id), {
+                      status: 'ringing'
+                  });
               }
           });
           updateCountdown();
@@ -785,7 +787,7 @@
           await addDoc(collection(db, 'profiles', currentProfile, 'alarms'), {
               time: time,
               label: label || 'Без названия',
-              isActive: true,
+              status: 'active',
               createdAt: serverTimestamp()
           });
       };
@@ -826,7 +828,11 @@
 
       const toggleAlarm = async (alarmId, currentStatus) => {
           if (!currentProfile) return;
-          await updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarmId), { isActive: !currentStatus });
+          // This function now effectively deactivates an active alarm.
+          // We set it to 'dismissed' so it goes to history.
+          if (currentStatus) {
+            await updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarmId), { status: 'dismissed' });
+          }
       };
 
       const setAlarmVolume = async (volume) => {
@@ -852,18 +858,21 @@
 
           alarmsUnsubscribe = onSnapshot(alarmsQuery, snap => {
               const allAlarms = snap.docs.map(d => ({...d.data(), id: d.id}));
-              const newActiveAlarms = allAlarms.filter(a => a.isActive).sort((a,b) => a.time.localeCompare(b.time));
-
-              if (ringingAlarmId) {
-                  const isRingingAlarmStillActive = newActiveAlarms.some(a => a.id === ringingAlarmId);
-                  if (!isRingingAlarmStillActive) {
+              
+              const alarmToRing = allAlarms.find(a => a.status === 'ringing');
+              if (alarmToRing) {
+                  if (ringingAlarmId !== alarmToRing.id) {
+                      triggerAlarm(alarmToRing);
+                  }
+              } else {
+                  if (ringingAlarmId && Swal.isVisible()) {
                       Swal.close();
                   }
               }
               
-              activeAlarms = newActiveAlarms;
+              activeAlarms = allAlarms.filter(a => a.status === 'active').sort((a,b) => a.time.localeCompare(b.time));
 
-              const historyAlarms = allAlarms.filter(a => !a.isActive && a.triggeredAt);
+              const historyAlarms = allAlarms.filter(a => a.status === 'dismissed' && a.triggeredAt);
               
               if (historyAlarms.length > 5) {
                   const alarmsToDelete = historyAlarms.sort((a, b) => a.triggeredAt.toMillis() - b.triggeredAt.toMillis()).slice(0, historyAlarms.length - 5);
@@ -906,7 +915,7 @@
         $('statsOverlay').classList.add('active');
         const logsQuery = query(collection(db, 'profiles', currentProfile, 'logs'), limit(100));
         const snap = await getDocs(logsQuery);
-        let entries = snap.docs.map(d => d.data());
+        let entries = snap.docs.map(d => d.data);
         entries.sort((a,b) => b.perHour - a.perHour);
         const labels = entries.map(e => e.location);
         const data = entries.map(e => e.perHour);
