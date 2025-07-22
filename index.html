@@ -415,6 +415,7 @@
       let audioCtx;
       let gainNode;
       let alarmOscillatorInterval;
+      let ringingAlarmId = null; // ID of the currently ringing alarm on this client
 
       const formatAdenaShort = (num) => {
         if (num >= 1000000000) return `${parseFloat((num / 1000000000).toFixed(2))}ккк`;
@@ -653,7 +654,6 @@
           }
           const now = audioCtx.currentTime;
           const noteDuration = 0.15;
-          // C5, E5, G5, C6 - мажорный аккорд для более приятного звучания
           const frequencies = [523.25, 659.25, 783.99, 1046.50]; 
 
           frequencies.forEach((freq, index) => {
@@ -667,6 +667,11 @@
       };
 
       const triggerAlarm = (alarm) => {
+          if (ringingAlarmId === alarm.id && Swal.isVisible()) {
+              return;
+          }
+          ringingAlarmId = alarm.id;
+
           Swal.fire({
               title: `⏰ Будильник ⏰`,
               html: `<b>${alarm.label || 'Без названия'}</b><br>Время: ${alarm.time}`,
@@ -675,7 +680,6 @@
               allowOutsideClick: false,
               didOpen: () => {
                   playAlarmSound();
-                  // Интервал мелодии
                   alarmOscillatorInterval = setInterval(playAlarmSound, 1500);
               },
               willClose: () => {
@@ -683,12 +687,15 @@
                       clearInterval(alarmOscillatorInterval);
                       alarmOscillatorInterval = null;
                   }
+                  ringingAlarmId = null;
+              },
+          }).then((result) => {
+              if (result.isConfirmed) {
+                  updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarm.id), {
+                      isActive: false,
+                      triggeredAt: serverTimestamp()
+                  });
               }
-          });
-          
-          updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarm.id), {
-              isActive: false,
-              triggeredAt: serverTimestamp()
           });
       };
 
@@ -845,7 +852,16 @@
 
           alarmsUnsubscribe = onSnapshot(alarmsQuery, snap => {
               const allAlarms = snap.docs.map(d => ({...d.data(), id: d.id}));
-              activeAlarms = allAlarms.filter(a => a.isActive).sort((a,b) => a.time.localeCompare(b.time));
+              const newActiveAlarms = allAlarms.filter(a => a.isActive).sort((a,b) => a.time.localeCompare(b.time));
+
+              if (ringingAlarmId) {
+                  const isRingingAlarmStillActive = newActiveAlarms.some(a => a.id === ringingAlarmId);
+                  if (!isRingingAlarmStillActive) {
+                      Swal.close();
+                  }
+              }
+              
+              activeAlarms = newActiveAlarms;
 
               const historyAlarms = allAlarms.filter(a => !a.isActive && a.triggeredAt);
               
@@ -908,7 +924,7 @@
 
       const toggleTheme = () => {
         const isDark = document.body.classList.toggle('dark');
-        $('toggle-theme').innerHTML = isDark ? '☀️' : '�';
+        $('toggle-theme').innerHTML = isDark ? '☀️' : '🌙';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
         tippy.setDefaultProps({ theme: isDark ? 'dark' : 'light' });
       };
