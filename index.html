@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>Калькулятор фарма Аден</title>
+  <title>Калькулятор фарма Аден и Будильник</title>
   <link rel="icon" href="https://github.com/BlackSTaP/Adena/blob/main/adena.png?raw=true" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css"/>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -17,12 +17,16 @@
   <style>
     :root {
       --bg-light: #f7f9fc; --bg-dark: #1c1c1c; --panel-light: #ffffff; --panel-dark: #262626;
-      --text-light: #333333; --text-dark: #e1e1e1; --accent: #3a8dde; --accent-hover: #3274c8;
+      --text-light: #333333; --text-dark: #e1e1e1; --accent: #00aaff; --accent-hover: #0088cc;
       --error: #e74c3c; --success: #2ecc71; --radius: 8px; --spacing: 16px; --transition: 0.3s;
       --font-base: 16px; --line-h: 1.6; --toggle-size: 46px;
       --text-secondary-light: #aaa; --text-secondary-dark: #777;
     }
     * { box-sizing: border-box; }
+    html, body {
+        height: 100%;
+        overflow-x: hidden;
+    }
     body {
       margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       font-size: var(--font-base); line-height: var(--line-h); color: var(--text-light);
@@ -36,7 +40,7 @@
     body.dark { background: var(--bg-dark); color: var(--text-dark); }
     .header-controls {
         position: fixed; top: var(--spacing); left: 50%; transform: translateX(-50%);
-        display: flex; gap: var(--spacing); align-items: center; z-index: 1000;
+        display: flex; gap: var(--spacing); align-items: center; z-index: 1001;
     }
     .control-button {
       width: var(--toggle-size); height: var(--toggle-size); border-radius: 50%; padding: 0;
@@ -58,7 +62,7 @@
         transform: translateY(0px) scale(0.95);
         box-shadow: none;
     }
-    .container {
+    .main-container {
       display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing); max-width: 960px;
       width: 100%; margin: 120px auto 0; padding: 0 var(--spacing);
     }
@@ -67,15 +71,22 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: background var(--transition);
     }
     body.dark .panel, body.dark .history { background: var(--panel-dark); }
-    h1, h2 { margin-top: 0; } h1 { font-size: 1.5rem; margin-bottom: var(--spacing); }
+    h1, h2, h3 { margin-top: 0; } h1 { font-size: 1.5rem; margin-bottom: var(--spacing); }
     .field { margin-bottom: var(--spacing); }
     label { display: block; margin-bottom: 4px; font-weight: 500; }
-    input {
+    input, textarea {
       width: 100%; padding: 8px 12px; font-size: 1rem; border: 1px solid #ccc;
       border-radius: var(--radius); transition: border var(--transition), box-shadow var(--transition);
+      background-color: #fff;
+      color: #333;
     }
-    input:focus { border-color: var(--accent); box-shadow: 0 0 6px rgba(58,141,222,0.3); outline: none; }
-    input:disabled, button:disabled { opacity: 0.6; cursor: not-allowed; }
+    body.dark textarea, body.dark input {
+        background-color: var(--bg-dark);
+        color: var(--text-dark);
+        border-color: #444;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 6px rgba(58,141,222,0.3); outline: none; }
+    input:disabled, button:disabled, textarea:disabled { opacity: 0.6; cursor: not-allowed; }
     .buttons { display: flex; gap: var(--spacing); flex-wrap: wrap; margin-bottom: var(--spacing); }
     button {
       flex: 1; padding: 10px; font-size: 1rem; border: none; border-radius: var(--radius);
@@ -89,15 +100,26 @@
     body.dark #copy-btn { color: var(--text-dark); }
     #copy-btn:hover { opacity: 1; }
     .history { max-height: 70vh; overflow-y: auto; }
-    .entry { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px; margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius); transition: background var(--transition); }
-    body.dark .entry { background: rgba(255,255,255,0.05); }
-    .entry-info { display: flex; align-items: center; gap: 12px; flex-grow: 1; }
+    .tabs { display: flex; border-bottom: 1px solid #ccc; margin-bottom: var(--spacing); }
+    body.dark .tabs { border-bottom-color: #444; }
+    .tab-button {
+        padding: 10px 15px; cursor: pointer; background: none; border: none; font-size: 1rem;
+        color: var(--text-light); opacity: 0.7; transition: opacity 0.2s, border-bottom 0.2s;
+        border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    body.dark .tab-button { color: var(--text-dark); }
+    .tab-button.active { opacity: 1; border-bottom-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .entry, .note-entry, .alarm-entry { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing) 8px; margin-bottom: var(--spacing); background: rgba(0,0,0,0.03); border-radius: var(--radius); transition: background var(--transition); }
+    body.dark .entry, body.dark .note-entry, body.dark .alarm-entry { background: rgba(255,255,255,0.05); }
+    .entry-info, .note-text, .alarm-details { flex-grow: 1; }
     .entry-thumbnail { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; cursor: pointer; }
     .entry-details { display: flex; flex-direction: column; justify-content: center; }
-    .entry-details span:first-child { font-weight: 600; }
-    .entry-details span:last-child { font-size: 0.875rem; color: #666; }
-    body.dark .entry-details span:last-child { color: #aaa; }
-    .entry-buttons { display: flex; align-items: center; gap: 4px; }
+    .entry-details span:first-child, .alarm-time { font-weight: 600; font-size: 1.1rem; }
+    .entry-details span:last-child, .alarm-label { font-size: 0.875rem; color: #666; }
+    body.dark .entry-details span:last-child, body.dark .alarm-label { color: #aaa; }
+    .entry-buttons, .note-buttons, .alarm-buttons { display: flex; align-items: center; gap: 4px; }
     .entry-btn { flex: none; width: 30px; height: 30px; padding: 0; background: none; border: none; opacity: 0.5; transition: opacity 0.2s; cursor: pointer; }
     .entry-btn:hover { opacity: 1; }
     .entry-btn svg { width: 16px; height: 16px; fill: var(--text-light); }
@@ -118,12 +140,95 @@
     .site-footer { width: 100%; text-align: center; padding: var(--spacing) 0; margin-top: 40px; color: var(--text-secondary-light); }
     body.dark .site-footer { color: var(--text-secondary-dark); }
     .site-footer p { margin: 0; font-family: 'Caveat', cursive; font-size: 1.3rem; font-weight: 700; }
-    .upload-area { display: flex; align-items: center; gap: 10px; }
-    #upload-btn { flex: 0 0 auto; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
-    #image-preview-container { position: relative; }
-    #image-preview { max-width: 80px; max-height: 40px; border-radius: 4px; display: none; }
-    #remove-image-btn { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; background: var(--error); color: white; border: none; border-radius: 50%; font-size: 12px; font-weight: bold; cursor: pointer; display: none; justify-content: center; align-items: center; }
+    #add-note-container { display: flex; gap: 8px; margin-bottom: var(--spacing); }
+    #new-note-input { flex-grow: 1; }
+    #add-note-btn { flex-shrink: 0; }
+    .note-text { flex-grow: 1; margin-right: 12px; }
     
+    /* Стили для полноэкранного будильника */
+    #alarm-view {
+        position: fixed; inset: 0; z-index: 1000;
+        display: none; flex-direction: column;
+        align-items: center; justify-content: center;
+        padding: var(--spacing);
+        background: var(--bg-dark);
+        color: var(--text-dark);
+    }
+    #alarm-view.active { display: flex; }
+    .timer-container {
+        flex-shrink: 0;
+        margin-bottom: 48px;
+    }
+    .timer-display {
+        text-align: center;
+    }
+    #digital-clock {
+        font-family: 'Roboto Mono', monospace;
+        font-size: clamp(4rem, 25vw, 9rem);
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0;
+        line-height: 1;
+    }
+    #countdown-timer {
+        font-family: 'Roboto Mono', monospace;
+        font-size: clamp(1.5rem, 8vw, 2.5rem);
+        font-weight: 400;
+        color: var(--accent);
+        margin: 16px 0 0;
+        min-height: 1.2em;
+    }
+    #next-alarm-info {
+        font-size: 1.2rem;
+        color: var(--text-secondary-dark);
+        margin-top: 12px;
+        min-height: 1.5em;
+    }
+    #alarm-controls {
+        max-width: 800px;
+        width: 100%;
+        background: transparent;
+    }
+    .alarm-setter { display: flex; gap: 8px; margin-bottom: var(--spacing); flex-wrap: wrap; }
+    .alarm-setter input { background: var(--panel-dark); border-color: #444; color: var(--text-dark); }
+    .alarm-setter input[type="time"] { flex: 1 1 120px; }
+    .alarm-setter input[type="text"] { flex: 2 1 180px; }
+    .alarm-setter button { flex: 1 1 100px; }
+    .preset-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: var(--spacing);
+        flex-wrap: wrap;
+    }
+    .preset-time-btn {
+        flex: 0 1 auto;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+        background-color: var(--panel-dark);
+        border: 1px solid #444;
+        color: var(--text-dark);
+    }
+    .preset-time-btn:hover:not(:disabled) {
+        background-color: var(--accent);
+        border-color: var(--accent);
+    }
+    .volume-control { display: flex; align-items: center; gap: 8px; margin-bottom: var(--spacing); padding: 0 8px; }
+    .volume-control label { margin-bottom: 0; }
+    .volume-control input[type="range"] { width: 100%; }
+    .alarm-lists { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing); }
+    #active-alarms-list, #alarm-history-list { max-height: 20vh; overflow-y: auto; padding-right: 8px; }
+    .alarm-entry.inactive { opacity: 0.6; }
+    .alarm-entry.inactive .alarm-time { text-decoration: line-through; }
+    #back-to-calc-btn {
+        position: fixed;
+        top: var(--spacing);
+        right: var(--spacing);
+        width: auto;
+        flex: none;
+        padding: 10px 15px;
+    }
+
     .pswp__bg { background: rgba(0, 0, 0, 0.9) !important; }
     .pswp__caption__center { text-align: center; }
     
@@ -133,7 +238,7 @@
     .tippy-box[data-theme~='dark'] { background-color: #333; color: #fff; }
     .tippy-box[data-theme~='dark'][data-placement^='top'] > .tippy-arrow::before { border-top-color: #333; }
     .tippy-box[data-theme~='dark'][data-placement^='bottom'] > .tippy-arrow::before { border-bottom-color: #333; }
-    @media (max-width: 800px) { .container { display: block; margin-top: 140px; } .history { margin-top: var(--spacing); } }
+    @media (max-width: 800px) { .main-container { display: block; margin-top: 140px; } .history { margin-top: var(--spacing); } }
   </style>
 </head>
 <body>
@@ -144,14 +249,18 @@
       }
     })();
   </script>
+
   <div id="tsparticles"></div>
-  <div class="header-controls">
+
+  <header class="header-controls">
     <button id="profile-btn" class="control-button" data-tippy-content="Выбрать профиль" onclick="app.openProfileManager()">
       <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
     </button>
     <button id="toggle-theme" class="control-button" data-tippy-content="Сменить тему" onclick="app.toggleTheme()">🌙</button>
-  </div>
-  <div class="container">
+    <button id="toggle-view-btn" class="control-button" data-tippy-content="Переключить вид" onclick="app.toggleView()">⏰</button>
+  </header>
+
+  <main class="main-container">
     <div class="panel">
       <h1>Калькулятор фарма Аден</h1>
       <div id="profile-status">Пожалуйста, выберите или создайте профиль.</div>
@@ -173,8 +282,8 @@
           <button id="upload-btn" class="btn-primary" disabled>🖼️</button>
           <input id="image-upload" type="file" accept="image/*" style="display: none;">
           <div id="image-preview-container">
-              <img id="image-preview" src="">
-              <button id="remove-image-btn">✕</button>
+              <img id="image-preview" src="" alt="Предпросмотр изображения" style="display: none;">
+              <button id="remove-image-btn" style="display: none;">✕</button>
           </div>
         </div>
       </div>
@@ -189,11 +298,62 @@
         </button>
       </div>
     </div>
-    <div class="history">
-      <h2>История</h2>
-      <div id="history-list"><p><em>Выберите профиль для просмотра.</em></p></div>
-    </div>
+    <aside class="history">
+      <div class="tabs">
+        <button class="tab-button active" onclick="app.switchTab(event, 'history-tab')">История</button>
+        <button class="tab-button" onclick="app.switchTab(event, 'notes-tab')">Заметки</button>
+      </div>
+      <div id="history-tab" class="tab-content active">
+        <div id="history-list"><p><em>Выберите профиль для просмотра.</em></p></div>
+      </div>
+      <div id="notes-tab" class="tab-content">
+        <div id="add-note-container">
+            <input type="text" id="new-note-input" placeholder="Введите новую заметку..." disabled>
+            <button id="add-note-btn" class="btn-primary" onclick="app.addNote()" disabled>Добавить</button>
+        </div>
+        <div id="notes-list">
+            <p><em>Выберите профиль для просмотра заметок.</em></p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="alarm-view">
+      <div class="timer-container">
+          <div class="timer-display">
+              <h1 id="digital-clock">00:00:00</h1>
+              <h2 id="countdown-timer"></h2>
+              <div id="next-alarm-info">Нет будильников</div>
+          </div>
+      </div>
+      <div id="alarm-controls">
+          <div class="alarm-setter">
+              <input type="time" id="alarm-time-input" disabled>
+              <input type="text" id="alarm-label-input" placeholder="Название (напр. Баюм)" disabled>
+              <button id="add-alarm-btn" class="btn-primary" onclick="app.addAlarm()" disabled>Добавить</button>
+          </div>
+          <div id="preset-times-container" class="preset-buttons">
+              <!-- Пресеты будут вставлены сюда -->
+          </div>
+          <div class="volume-control">
+              <label for="alarm-volume">🔊</label>
+              <input type="range" id="alarm-volume" min="0" max="1" step="0.05" value="0.5" disabled>
+          </div>
+          <div class="alarm-lists">
+              <div>
+                  <h3>Активные будильники</h3>
+                  <div id="active-alarms-list"><p><em>Нет активных будильников.</em></p></div>
+              </div>
+              <div>
+                  <h3>История</h3>
+                  <div id="alarm-history-list"><p><em>История пуста.</em></p></div>
+              </div>
+          </div>
+      </div>
+      <button id="back-to-calc-btn" class="btn-primary" onclick="app.toggleView()">Назад</button>
   </div>
+
+
   <div class="overlay" id="statsOverlay">
     <div class="modal"> <button class="modal-close" onclick="app.closeStats()">✕</button> <h3>Статистика фарма</h3> <canvas id="statsChart"></canvas> </div>
   </div>
@@ -218,74 +378,56 @@
   <script src="https://unpkg.com/@popperjs/core@2"></script>
   <script src="https://unpkg.com/tippy.js@6"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
   
   <script type="module">
     import PhotoSwipeLightbox from 'https://unpkg.com/photoswipe@5/dist/photoswipe-lightbox.esm.js';
     import PhotoSwipe from 'https://unpkg.com/photoswipe@5/dist/photoswipe.esm.js';
-
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    // УДАЛЯЕМ ВСЕ ИЗ `firebase/storage`, ОСТАВЛЯЕМ ТОЛЬКО FIRESTORE
-    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, setDoc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
     import { formatDistanceToNow } from 'https://cdn.skypack.dev/date-fns@2';
     import { ru } from 'https://cdn.skypack.dev/date-fns/locale';
 
     const firebaseConfig = {
-      apiKey: 'AIzaSyDb3e-6m-ryG4rhK7-w8vptqj4SMUS2Hhw',
-      authDomain: 'adenafarm-3260d.firebaseapp.com',
-      projectId: 'adenafarm-3260d',
-      storageBucket: 'adenafarm-3260d.appspot.com',
-      messagingSenderId: '455723070548',
-      appId: '1:455723070548:web:03eb62738536d4a0ada9c1'
+      apiKey: "AIzaSyDb3e-6m-ryG4rhK7-w8vptqj4SMUS2Hhw",
+      authDomain: "adenafarm-3260d.firebaseapp.com",
+      projectId: "adenafarm-3260d",
+      storageBucket: "adenafarm-3260d.appspot.com",
+      messagingSenderId: "455723070548",
+      appId: "1:455723070548:web:03eb62738536d4a0ada9c1"
     };
     
     const appModule = () => {
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
-      // const storage = getStorage(app); // Больше не нужно
       const $ = id => document.getElementById(id);
 
       let currentProfile = null;
       let historyUnsubscribe = null;
+      let notesUnsubscribe = null;
+      let alarmsUnsubscribe = null;
       let currentPerHourResult = null;
-      
       let lightbox = null;
       let historyImageDataSource = [];
+      let activeAlarms = [];
+      let alarmInterval = null;
+      let alarmSound;
 
       const formatAdenaShort = (num) => {
         if (num >= 1000000000) return `${parseFloat((num / 1000000000).toFixed(2))}ккк`;
         if (num >= 1000000) return `${parseFloat((num / 1000000).toFixed(2))}кк`;
-        if (num >= 10000) return `${parseFloat((num / 1000).toFixed(1))}к`;
+        if (num >= 1000) return `${parseFloat((num / 1000).toFixed(1))}к`;
         return num.toLocaleString('ru-RU');
-      };
-
-      const fallbackCopyToClipboard = (text) => {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.top = "-9999px";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          document.execCommand('copy');
-          Swal.fire({ icon: 'success', title: 'Скопировано!', showConfirmButton: false, timer: 1500 });
-        } catch (err) {
-          Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось скопировать.' });
-        }
-        document.body.removeChild(textArea);
       };
 
       const copyText = async (text) => {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           try {
             await navigator.clipboard.writeText(text);
-            Swal.fire({ icon: 'success', title: 'Скопировано!', showConfirmButton: false, timer: 1500 });
+            Swal.fire({ icon: 'success', title: 'Скопировано!', showConfirmButton: false, timer: 1500, toast: true, position: 'top-end' });
           } catch (err) {
-            fallbackCopyToClipboard(text);
+            console.error('Failed to copy text: ', err);
           }
-        } else {
-          fallbackCopyToClipboard(text);
         }
       };
       
@@ -302,7 +444,7 @@
         const a = parseFloat($('adena').value);
         const m = parseFloat($('minutes').value);
         const copyBtn = $('copy-btn');
-        if (!a || !m) {
+        if (!a || !m || m <= 0) {
           currentPerHourResult = null;
           if (copyBtn) copyBtn.style.display = 'none';
           $('result').textContent = '';
@@ -310,57 +452,41 @@
         }
         const perHour = (a / m) * 60;
         currentPerHourResult = Math.round(perHour);
-        $('result').textContent = `За час: ${perHour.toLocaleString('ru-RU')} аден`;
+        $('result').textContent = `За час: ${currentPerHourResult.toLocaleString('ru-RU')} аден`;
         if (copyBtn) copyBtn.style.display = 'inline-block';
         return currentPerHourResult;
       };
 
-      // --- НОВАЯ ФУНКЦИЯ ЗАГРУЗКИ НА IMG BB ---
       const uploadImage = (file) => {
         return new Promise(async (resolve, reject) => {
             const apiKey = '44f074dba40801102ee798981810ec76';
             const formData = new FormData();
             formData.append('image', file);
-
             try {
-                const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-                    method: 'POST',
-                    body: formData,
-                });
-
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, { method: 'POST', body: formData });
                 const result = await response.json();
-
                 if (result.success) {
-                    // Возвращаем объект, похожий на тот, что был раньше
-                    resolve({ 
-                      imageUrl: result.data.url, 
-                      imagePath: result.data.delete_url // Сохраняем ссылку на удаление в поле imagePath
-                    });
+                    resolve({ imageUrl: result.data.url, deleteUrl: result.data.delete_url });
                 } else {
                     reject(new Error(result.error.message || 'Ошибка при загрузке на ImgBB'));
                 }
             } catch (error) {
-                console.error("Ошибка сети при загрузке на ImgBB:", error);
                 reject(error);
             }
         });
       };
-
+      
       const saveResult = async () => {
         if (!currentProfile) { Swal.fire('Ошибка', 'Сначала выберите профиль', 'error'); return; }
         const perHour = calculate();
         if (!perHour) { Swal.fire('Ошибка', 'Введите корректные значения', 'error'); return; }
-
         const saveBtn = $('save-btn');
         saveBtn.disabled = true;
-        
-        let uploadResult = { imageUrl: null, imagePath: null };
+        let uploadResult = { imageUrl: null, deleteUrl: null };
         const imageFile = $('image-upload').files[0];
-
         if (imageFile) {
             try {
                 saveBtn.textContent = 'Загрузка...';
-                // Вызываем новую функцию без колбэка прогресса
                 uploadResult = await uploadImage(imageFile);
             } catch (error) {
                 Swal.fire('Ошибка загрузки', error.message || 'Не удалось загрузить изображение.', 'error');
@@ -369,16 +495,14 @@
                 return;
             }
         }
-        
         saveBtn.textContent = 'Сохранение...';
-        
         try {
           await addDoc(collection(db, 'profiles', currentProfile, 'logs'), {
             location: ($('location').value || 'Без локации').trim(),
             perHour,
             ts: serverTimestamp(),
             imageUrl: uploadResult.imageUrl,
-            imagePath: uploadResult.imagePath // Здесь теперь будет ссылка на удаление
+            imageDeleteUrl: uploadResult.deleteUrl
           });
           Swal.fire({ icon: 'success', title: 'Сохранено!', showConfirmButton: false, timer: 1500 });
           $('adena').value = '';
@@ -387,7 +511,6 @@
           removePreviewImage();
           calculate();
         } catch(e) { 
-            console.error("Ошибка сохранения: ", e); 
             Swal.fire('Ошибка!', 'Не удалось сохранить запись.', 'error');
         } finally {
             saveBtn.disabled = false;
@@ -395,75 +518,349 @@
         }
       };
       
-      const deleteEntry = async (id, imagePath) => {
+      const deleteEntry = async (id) => {
         if (!currentProfile) return;
-        Swal.fire({
-            title: 'Удалить запись?',
-            text: "Это действие нельзя будет отменить!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Да, удалить!',
-            cancelButtonText: 'Отмена'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try { 
-                    await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); 
-                    // Удаление файла с хостинга убрано, т.к. это небезопасно с клиента
-                    Swal.fire('Удалено!', 'Запись была удалена.', 'success');
-                } catch(e) { 
-                    Swal.fire('Ошибка!', 'Не удалось удалить запись.', 'error');
-                }
-            }
+        const result = await Swal.fire({
+            title: 'Удалить запись?', text: "Это действие нельзя будет отменить!",
+            icon: 'warning', showCancelButton: true, confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33', confirmButtonText: 'Да, удалить!', cancelButtonText: 'Отмена'
         });
+        if (result.isConfirmed) {
+            try { 
+                await deleteDoc(doc(db, 'profiles', currentProfile, 'logs', id)); 
+                Swal.fire('Удалено!', 'Запись была удалена.', 'success');
+            } catch(e) { 
+                Swal.fire('Ошибка!', 'Не удалось удалить запись.', 'error');
+            }
+        }
       };
 
       const subscribeHistory = (profileName) => {
-        if (historyUnsubscribe) historyUnsubscribe();
+        if (historyUnsubscribe) {
+            historyUnsubscribe();
+        }
         const hist = $('history-list');
         const logsQuery = query(collection(db, 'profiles', profileName, 'logs'), orderBy('ts', 'desc'), limit(100));
         historyUnsubscribe = onSnapshot(logsQuery, snap => {
-          
-          historyImageDataSource = snap.docs
-            .map(doc => doc.data())
-            .filter(item => item.imageUrl)
-            .map(item => ({
-              src: item.imageUrl,
-              width: 0,
-              height: 0,
-              html: `${item.location} &mdash; ${formatAdenaShort(item.perHour)} аден/ч`
-            }));
+          historyImageDataSource = snap.docs.map(doc => doc.data()).filter(item => item.imageUrl)
+            .map(item => ({ src: item.imageUrl, width: 0, height: 0, html: `${item.location} &mdash; ${formatAdenaShort(item.perHour)} аден/ч` }));
           
           hist.innerHTML = snap.docs.map(doc => {
-            const { location, perHour, ts, imageUrl, imagePath } = doc.data();
+            const { location, perHour, ts, imageUrl } = doc.data();
             const date = ts ? formatDistanceToNow(ts.toDate(), { addSuffix: true, locale: ru }) : 'недавно';
             const fullDate = ts ? ts.toDate().toLocaleString('ru-RU') : '';
             const textToCopy = `Локация: ${location}\nАден/час: ${perHour.toLocaleString('ru-RU')}\nДата: ${fullDate}`;
             
-            const imageHtml = imageUrl 
-              ? `<img class="entry-thumbnail" src="${imageUrl}" alt="Скриншот для: ${location}" onclick="app.openGallery('${imageUrl}')">`
-              : '';
+            // Safely escape the string for use in an HTML attribute
+            const escapedTextForCopy = JSON.stringify(textToCopy);
+
+            const imageHtml = imageUrl ? `<img class="entry-thumbnail" src="${imageUrl}" alt="Скриншот для: ${location}" onclick="app.openGallery('${imageUrl}')">` : '';
             
             return `<div class="entry">
-                      <div class="entry-info">
-                        ${imageHtml}
-                        <div class="entry-details">
-                            <span>${location} — ${formatAdenaShort(perHour)} аден/ч</span>
-                            <span data-tippy-content="${fullDate}">${date}</span>
-                        </div>
-                      </div>
+                      <div class="entry-info">${imageHtml}<div class="entry-details"><span>${location} — ${formatAdenaShort(perHour)} аден/ч</span><span data-tippy-content="${fullDate}">${date}</span></div></div>
                       <div class="entry-buttons">
-                        <button class="entry-btn" data-tippy-content="Копировать" onclick="app.copyHistoryEntry(\`${textToCopy}\`)"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path></svg></button>
-                        <button class="entry-btn del-btn" data-tippy-content="Удалить" onclick="app.deleteEntry('${doc.id}', '${imagePath}')">✕</button>
-                      </div>
-                    </div>`;
+                        <button class="entry-btn" data-tippy-content="Копировать" onclick='app.copyHistoryEntry(${escapedTextForCopy})'><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"></path><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"></path></svg></button>
+                        <button class="entry-btn del-btn" data-tippy-content="Удалить" onclick="app.deleteEntry('${doc.id}')">✕</button>
+                      </div></div>`;
           }).join('') || '<p><em>Пока пусто</em></p>';
           tippy('[data-tippy-content]');
         }, error => {
-          console.error("Ошибка подписки:", error);
+          console.error("History subscription error: ", error);
           hist.innerHTML = '<p><em>Не удалось загрузить историю.</em></p>';
         });
+      };
+      
+      const addNote = async () => {
+        if (!currentProfile) return;
+        const input = $('new-note-input');
+        const text = input.value.trim();
+        if (!text) return;
+        
+        try {
+            await addDoc(collection(db, 'profiles', currentProfile, 'notes'), {
+                text: text,
+                createdAt: serverTimestamp()
+            });
+            input.value = '';
+        } catch (e) {
+            Swal.fire('Ошибка', 'Не удалось добавить заметку.', 'error');
+        }
+      };
+
+      const deleteNote = async (noteId) => {
+        if (!currentProfile) return;
+        await deleteDoc(doc(db, 'profiles', currentProfile, 'notes', noteId));
+      };
+
+      const editNote = async (noteId, currentText) => {
+        if (!currentProfile) return;
+        const { value: newText } = await Swal.fire({
+            title: 'Редактировать заметку', input: 'textarea',
+            inputValue: currentText, showCancelButton: true,
+            confirmButtonText: 'Сохранить', cancelButtonText: 'Отмена',
+            inputValidator: (value) => !value && 'Заметка не может быть пустой!'
+        });
+        if (newText) {
+            await updateDoc(doc(db, 'profiles', currentProfile, 'notes', noteId), { text: newText });
+        }
+      };
+
+      const subscribeToNotes = (profileName) => {
+          if (notesUnsubscribe) {
+              notesUnsubscribe();
+          }
+          const notesListDiv = $('notes-list');
+          const notesQuery = query(collection(db, 'profiles', profileName, 'notes'), orderBy('createdAt', 'desc'));
+          notesUnsubscribe = onSnapshot(notesQuery, snap => {
+              if (snap.empty) {
+                  notesListDiv.innerHTML = '<p><em>Заметок пока нет.</em></p>';
+                  return;
+              }
+              notesListDiv.innerHTML = snap.docs.map(doc => {
+                  const note = doc.data();
+                  // Safely escape for onclick attribute
+                  const escapedText = JSON.stringify(note.text);
+                  return `<div class="note-entry"><span class="note-text">${note.text}</span><div class="note-buttons">
+                              <button class="entry-btn" data-tippy-content="Редактировать" onclick='app.editNote("${doc.id}", ${escapedText})'>✏️</button>
+                              <button class="entry-btn" data-tippy-content="Удалить" onclick='app.deleteNote("${doc.id}")'>🗑️</button>
+                          </div></div>`;
+              }).join('');
+              tippy('[data-tippy-content]');
+          }, error => {
+              console.error("Notes subscription error: ", error);
+              notesListDiv.innerHTML = '<p><em>Не удалось загрузить заметки.</em></p>';
+          });
+      };
+      
+      const initAudio = () => {
+          if (alarmSound) return;
+          alarmSound = new Howl({
+              src: ['http://85.192.24.91/alarm.mp3'],
+              loop: true,
+              html5: true, // Important for broader compatibility
+              onloaderror: (id, err) => {
+                  console.error('Ошибка загрузки звука:', err);
+                  Swal.fire('Ошибка звука', 'Не удалось загрузить мелодию будильника. Проверьте ссылку или соединение.', 'error');
+              },
+              onplayerror: (id, err) => {
+                  console.error('Ошибка воспроизведения:', err);
+                  Swal.fire('Ошибка звука', 'Не удалось воспроизвести мелодию. Попробуйте взаимодействовать со страницей.', 'error');
+              }
+          });
+          console.log("Audio initialized with external MP3.");
+      };
+
+      const triggerAlarm = (alarm) => {
+          let soundId;
+          Swal.fire({
+              title: `⏰ Будильник ⏰`,
+              html: `<b>${alarm.label || 'Без названия'}</b><br>Время: ${alarm.time}`,
+              icon: 'warning',
+              confirmButtonText: 'Остановить',
+              allowOutsideClick: false,
+              didOpen: () => {
+                  if (alarmSound) {
+                      soundId = alarmSound.play();
+                  }
+              },
+              willClose: () => {
+                  if (alarmSound) {
+                      alarmSound.stop(soundId);
+                  }
+              }
+          });
+          
+          updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarm.id), {
+              isActive: false,
+              triggeredAt: serverTimestamp()
+          });
+      };
+
+      const getMskTime = () => {
+          const now = new Date();
+          const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+          return new Date(utc + (3600000 * 3)); // МСК = UTC+3
+      };
+
+      const updateCountdown = () => {
+          const mskNow = getMskTime();
+          let nextAlarmTime = null;
+          let nextAlarmLabel = 'Нет будильников';
+
+          activeAlarms.forEach(alarm => {
+              const [hours, minutes] = alarm.time.split(':');
+              let alarmDate = getMskTime();
+              alarmDate.setHours(hours, minutes, 0, 0);
+
+              if (alarmDate < mskNow) {
+                  alarmDate.setDate(alarmDate.getDate() + 1);
+              }
+
+              if (!nextAlarmTime || alarmDate < nextAlarmTime) {
+                  nextAlarmTime = alarmDate;
+                  nextAlarmLabel = `${alarm.label} в ${alarm.time}`;
+              }
+          });
+
+          const digitalClockEl = $('digital-clock');
+          const countdownEl = $('countdown-timer');
+          const nextAlarmInfoEl = $('next-alarm-info');
+          
+          const mskHours = mskNow.getHours().toString().padStart(2, '0');
+          const mskMinutes = mskNow.getMinutes().toString().padStart(2, '0');
+          const mskSeconds = mskNow.getSeconds().toString().padStart(2, '0');
+          digitalClockEl.textContent = `${mskHours}:${mskMinutes}:${mskSeconds}`;
+
+          if (nextAlarmTime) {
+              const diff = nextAlarmTime - mskNow;
+              if (diff > 0) {
+                  const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                  const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                  const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                  countdownEl.textContent = `через ${hours}:${minutes}:${seconds}`;
+                  nextAlarmInfoEl.textContent = `🔔 ${nextAlarmLabel}`;
+              } else {
+                  countdownEl.textContent = "";
+                  nextAlarmInfoEl.textContent = "Нет будильников";
+              }
+          } else {
+              countdownEl.textContent = "";
+              nextAlarmInfoEl.textContent = "Нет будильников";
+          }
+      };
+
+      const checkAlarms = () => {
+          const mskTime = getMskTime();
+          const mskHours = mskTime.getHours().toString().padStart(2, '0');
+          const mskMinutes = mskTime.getMinutes().toString().padStart(2, '0');
+          const currentTime = `${mskHours}:${mskMinutes}`;
+
+          activeAlarms.forEach(alarm => {
+              if (alarm.time === currentTime && alarm.isActive) {
+                  triggerAlarm(alarm);
+              }
+          });
+          updateCountdown();
+      };
+      
+      const addAlarm = async (time, label) => {
+          if (!currentProfile) return;
+          if (!time) {
+              Swal.fire('Ошибка', 'Укажите время для будильника.', 'error');
+              return;
+          }
+          const existingTimes = new Set(activeAlarms.map(a => a.time));
+          if (existingTimes.has(time)) {
+              Swal.fire({
+                  toast: true, position: 'top-end',
+                  icon: 'info', title: 'Будильник на это время уже есть',
+                  showConfirmButton: false, timer: 2000
+              });
+              return;
+          }
+
+          await addDoc(collection(db, 'profiles', currentProfile, 'alarms'), {
+              time: time,
+              label: label || 'Без названия',
+              isActive: true,
+              createdAt: serverTimestamp()
+          });
+      };
+
+      const handleAddAlarmClick = () => {
+          const timeInput = $('alarm-time-input');
+          const labelInput = $('alarm-label-input');
+          addAlarm(timeInput.value, labelInput.value.trim());
+          timeInput.value = '';
+          labelInput.value = '';
+      };
+      
+      const renderPresetTimes = () => {
+          const container = $('preset-times-container');
+          if (!container) return;
+          container.innerHTML = '';
+          for (let i = 1; i <= 23; i += 2) {
+              const time = `${i.toString().padStart(2, '0')}:00`;
+              const btn = document.createElement('button');
+              btn.className = 'preset-time-btn';
+              btn.textContent = time;
+              btn.onclick = () => addAlarm(time, 'Пресет');
+              container.appendChild(btn);
+          }
+      };
+
+      const deleteAlarm = async (alarmId) => {
+          if (!currentProfile) return;
+          await deleteDoc(doc(db, 'profiles', currentProfile, 'alarms', alarmId));
+      };
+
+      const toggleAlarm = async (alarmId, currentStatus) => {
+          if (!currentProfile) return;
+          await updateDoc(doc(db, 'profiles', currentProfile, 'alarms', alarmId), { isActive: !currentStatus });
+      };
+
+      const setAlarmVolume = async (volume) => {
+          if (alarmSound) {
+              alarmSound.volume(parseFloat(volume));
+          }
+          if (currentProfile) {
+            try {
+                await setDoc(doc(db, 'profiles', currentProfile), { alarmVolume: volume }, { merge: true });
+            } catch(e) {
+                console.error("Could not save volume setting to Firebase", e);
+            }
+          }
+      };
+
+      const subscribeToAlarms = (profileName) => {
+          if (alarmsUnsubscribe) {
+              alarmsUnsubscribe();
+          }
+          const activeListDiv = $('active-alarms-list');
+          const historyListDiv = $('alarm-history-list');
+          const alarmsQuery = query(collection(db, 'profiles', profileName, 'alarms'), orderBy('createdAt', 'desc'));
+
+          alarmsUnsubscribe = onSnapshot(alarmsQuery, snap => {
+              const allAlarms = snap.docs.map(d => ({...d.data(), id: d.id}));
+              activeAlarms = allAlarms.filter(a => a.isActive).sort((a,b) => a.time.localeCompare(b.time));
+
+              const historyAlarms = allAlarms.filter(a => !a.isActive && a.triggeredAt);
+              
+              if (historyAlarms.length > 5) {
+                  const alarmsToDelete = historyAlarms.sort((a, b) => a.triggeredAt.toMillis() - b.triggeredAt.toMillis()).slice(0, historyAlarms.length - 5);
+                  alarmsToDelete.forEach(alarm => {
+                      deleteDoc(doc(db, 'profiles', profileName, 'alarms', alarm.id));
+                  });
+              }
+              
+              const visibleHistory = historyAlarms.sort((a, b) => b.triggeredAt.toMillis() - a.triggeredAt.toMillis()).slice(0, 5);
+
+              activeListDiv.innerHTML = activeAlarms.length > 0 ? activeAlarms.map(alarm => {
+                  return `<div class="alarm-entry">
+                            <div class="alarm-details">
+                                <span class="alarm-time">${alarm.time}</span>
+                                <span class="alarm-label">${alarm.label}</span>
+                            </div>
+                            <div class="alarm-buttons">
+                                <button class="entry-btn" data-tippy-content="Отключить" onclick="app.toggleAlarm('${alarm.id}', true)">🔕</button>
+                                <button class="entry-btn" data-tippy-content="Удалить" onclick="app.deleteAlarm('${alarm.id}')">🗑️</button>
+                            </div>
+                          </div>`;
+              }).join('') : '<p><em>Нет активных будильников.</em></p>';
+
+              historyListDiv.innerHTML = visibleHistory.length > 0 ? visibleHistory.map(alarm => {
+                  const triggeredDate = alarm.triggeredAt ? alarm.triggeredAt.toDate().toLocaleString('ru-RU') : '';
+                  return `<div class="alarm-entry inactive">
+                            <div class="alarm-details">
+                                <span class="alarm-time">${alarm.time}</span>
+                                <span class="alarm-label">${alarm.label} - ${triggeredDate}</span>
+                            </div>
+                          </div>`;
+              }).join('') : '<p><em>История пуста.</em></p>';
+              tippy('[data-tippy-content]');
+          }, error => {
+              console.error("Alarms subscription error: ", error);
+          });
       };
 
       const openStats = async () => {
@@ -475,12 +872,16 @@
         const labels = entries.map(e => e.location);
         const data = entries.map(e => e.perHour);
         const oldChart = Chart.getChart('statsChart');
-        if (oldChart) { oldChart.destroy(); }
+        if (oldChart) {
+            oldChart.destroy();
+        }
         const ctx = $('statsChart').getContext('2d');
         new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Аден/ч', data }] }, options: { responsive: true, scales: { y: { beginAtZero: true } } } });
       };
 
-      const closeStats = () => { $('statsOverlay').classList.remove('active'); };
+      const closeStats = () => { 
+          $('statsOverlay').classList.remove('active'); 
+      };
 
       const toggleTheme = () => {
         const isDark = document.body.classList.toggle('dark');
@@ -489,80 +890,116 @@
         tippy.setDefaultProps({ theme: isDark ? 'dark' : 'light' });
       };
 
+      const toggleView = () => {
+          const mainContainer = document.querySelector('.main-container');
+          const alarmView = $('alarm-view');
+          const isAlarmView = alarmView.classList.toggle('active');
+          mainContainer.style.display = isAlarmView ? 'none' : 'grid';
+          $('toggle-view-btn').innerHTML = isAlarmView ? '📊' : '⏰';
+      };
+
       const openProfileManager = async () => {
           $('profileOverlay').classList.add('active');
           const profileListDiv = $('profile-list');
           profileListDiv.innerHTML = 'Загрузка...';
           try {
             const snap = await getDocs(collection(db, 'profiles'));
-            profileListDiv.innerHTML = snap.docs.map(doc => `<div class="profile-entry"><button class="btn-primary profile-name-btn" onclick="app.selectProfile('${doc.id}')">${doc.id}</button><button class="profile-delete-btn" onclick="app.deleteProfile('${doc.id}')" title="Удалить профиль">✕</button></div>`).join('') || 'Профилей пока нет.';
-          } catch (e) { console.error("Ошибка загрузки профилей:", e); }
+            if (snap.empty) {
+                profileListDiv.innerHTML = 'Профилей пока нет.';
+            } else {
+                profileListDiv.innerHTML = snap.docs.map(doc => `<div class="profile-entry"><button class="btn-primary profile-name-btn" onclick="app.selectProfile('${doc.id}')">${doc.id}</button><button class="profile-delete-btn" onclick="app.deleteProfile('${doc.id}')" title="Удалить профиль">✕</button></div>`).join('');
+            }
+          } catch (e) {
+             profileListDiv.innerHTML = 'Ошибка загрузки профилей.';
+             console.error("Error loading profiles: ", e);
+          }
       };
 
-      const closeProfileManager = () => { $('profileOverlay').classList.remove('active'); };
+      const closeProfileManager = () => { 
+          $('profileOverlay').classList.remove('active'); 
+      };
 
-      const selectProfile = (profileName) => {
+      const selectProfile = async (profileName) => {
         currentProfile = profileName;
         localStorage.setItem('adenafarm_currentProfile', profileName);
         updateUiForProfile();
         closeProfileManager();
+        const profileSnap = await getDoc(doc(db, 'profiles', currentProfile));
+        if(profileSnap.exists() && profileSnap.data().alarmVolume !== undefined) {
+            const volume = profileSnap.data().alarmVolume;
+            $('alarm-volume').value = volume;
+            setAlarmVolume(volume);
+        } else {
+            $('alarm-volume').value = 0.5;
+            setAlarmVolume(0.5);
+        }
       };
 
       const createNewProfile = async () => {
         const newNameInput = $('new-profile-name');
         const newName = newNameInput.value.trim();
-        if (!newName) { Swal.fire('Ошибка', 'Имя профиля не может быть пустым.', 'error'); return; }
-        await setDoc(doc(db, 'profiles', newName), {});
+        if (!newName) { 
+            Swal.fire('Ошибка', 'Имя профиля не может быть пустым.', 'error'); 
+            return; 
+        }
+        await setDoc(doc(db, 'profiles', newName), { alarmVolume: 0.5 });
         newNameInput.value = '';
         selectProfile(newName);
       };
 
       const deleteProfile = async (profileName) => {
-         Swal.fire({
-            title: 'Удалить профиль?',
-            text: `Вы уверены, что хотите удалить профиль "${profileName}"? Все данные будут стерты безвозвратно.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Да, удалить!',
-            cancelButtonText: 'Отмена'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                  const logsQuery = query(collection(db, 'profiles', profileName, 'logs'));
-                  const logsSnapshot = await getDocs(logsQuery);
-                  await Promise.all(logsSnapshot.docs.map(logDoc => deleteDoc(logDoc.ref)));
-                  await deleteDoc(doc(db, 'profiles', profileName));
-                  if (currentProfile === profileName) {
-                    currentProfile = null;
-                    localStorage.removeItem('adenafarm_currentProfile');
-                    updateUiForProfile();
-                  }
-                  closeProfileManager(); 
-                  openProfileManager(); 
-                } catch (e) { console.error("Ошибка при удалении профиля: ", e); }
-            }
+         const result = await Swal.fire({
+            title: 'Удалить профиль?', text: `Вы уверены, что хотите удалить профиль "${profileName}"? Все данные будут стерты безвозвратно.`,
+            icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6', confirmButtonText: 'Да, удалить!', cancelButtonText: 'Отмена'
         });
+        if (result.isConfirmed) {
+            try {
+              const collectionsToDelete = ['logs', 'notes', 'alarms'];
+              for(const col of collectionsToDelete) {
+                  const snapshot = await getDocs(query(collection(db, 'profiles', profileName, col)));
+                  await Promise.all(snapshot.docs.map(d => deleteDoc(d.ref)));
+              }
+              await deleteDoc(doc(db, 'profiles', profileName));
+              if (currentProfile === profileName) {
+                currentProfile = null;
+                localStorage.removeItem('adenafarm_currentProfile');
+                updateUiForProfile();
+              }
+              closeProfileManager(); 
+              openProfileManager(); 
+            } catch (e) { 
+                Swal.fire('Ошибка', 'Не удалось удалить профиль.', 'error'); 
+                console.error("Error deleting profile: ", e);
+            }
+        }
       };
 
       const updateUiForProfile = () => {
-        const formElements = ['location', 'adena', 'minutes', 'save-btn', 'stats-btn', 'upload-btn'];
+        const calcElements = ['location', 'adena', 'minutes', 'save-btn', 'stats-btn', 'upload-btn', 'new-note-input', 'add-note-btn'];
+        const alarmElements = ['alarm-time-input', 'alarm-label-input', 'add-alarm-btn', 'alarm-volume'];
+        const allElements = [...calcElements, ...alarmElements];
+
         if (currentProfile) {
           $('profile-status').textContent = `Текущий профиль: ${currentProfile}`;
-          formElements.forEach(id => $(id).disabled = false);
+          allElements.forEach(id => { if($(id)) $(id).disabled = false; });
           subscribeHistory(currentProfile);
+          subscribeToNotes(currentProfile);
+          subscribeToAlarms(currentProfile);
+          renderPresetTimes();
+          $('preset-times-container').style.display = 'flex';
         } else {
           $('profile-status').textContent = 'Пожалуйста, выберите или создайте профиль.';
-          $('history-list').innerHTML = '<p><em>Пока пусто</em></p>';
+          $('history-list').innerHTML = '<p><em>Выберите профиль для просмотра.</em></p>';
+          $('notes-list').innerHTML = '<p><em>Выберите профиль для просмотра заметок.</em></p>';
+          $('active-alarms-list').innerHTML = '<p><em>Выберите профиль для будильников.</em></p>';
+          $('alarm-history-list').innerHTML = '<p><em></em></p>';
           if (historyUnsubscribe) historyUnsubscribe();
-          formElements.forEach(id => $(id).disabled = true);
+          if (notesUnsubscribe) notesUnsubscribe();
+          if (alarmsUnsubscribe) alarmsUnsubscribe();
+          allElements.forEach(id => { if($(id)) $(id).disabled = true; });
+          $('preset-times-container').style.display = 'none';
         }
-      };
-      
-      const initLibs = () => {
-          tsParticles.load("tsparticles",{fpsLimit:60,interactivity:{events:{onHover:{enable:!0,mode:"repulse"},resize:!0},modes:{repulse:{distance:60,duration:.4}}},particles:{color:{value:"#888"},links:{color:"#888",distance:150,enable:!0,opacity:.2,width:1},move:{direction:"none",enable:!0,outModes:{default:"bounce"},random:!0,speed:1,straight:!1},number:{density:{enable:!0,area:800},value:80},opacity:{value:.2},shape:{type:"circle"},size:{value:{min:1,max:3}}},detectRetina:!0});
-          tippy('[data-tippy-content]', { theme: document.body.classList.contains('dark') ? 'dark' : 'light' });
       };
       
       const previewImage = (event) => {
@@ -578,92 +1015,81 @@
       };
 
       const removePreviewImage = () => {
-        document.getElementById("image-upload").value = "";
-        document.getElementById("image-preview").src = "";
-        document.getElementById("image-preview").style.display = "none";
-        document.getElementById("remove-image-btn").style.display = "none";
+        $('image-upload').value = "";
+        $('image-preview').src = "";
+        $('image-preview').style.display = "none";
+        $('remove-image-btn').style.display = "none";
       };
       
-      const _openPhotoSwipeInstance = (index) => {
-        if (lightbox) {
-            lightbox.destroy();
-            lightbox = null;
-        }
-        lightbox = new PhotoSwipeLightbox({
-            dataSource: historyImageDataSource,
-            pswpModule: PhotoSwipe,
-            initialZoomLevel: 'fill',
-            wheelToZoom: true,
-        });
-
-        lightbox.on('click', (e) => {
-            if (e.originalEvent.target === e.bg) {
-                lightbox.pswp.close();
-            }
-        });
-
-        lightbox.init();
-        lightbox.loadAndOpen(index);
-      };
-
       const openGallery = (clickedImageUrl) => {
         const itemIndex = historyImageDataSource.findIndex(item => item.src === clickedImageUrl);
         if (itemIndex < 0) return;
-
+        const _openInstance = () => {
+            if (lightbox) {
+                lightbox.destroy();
+            }
+            lightbox = new PhotoSwipeLightbox({ dataSource: historyImageDataSource, pswpModule: PhotoSwipe, initialZoomLevel: 'fill', wheelToZoom: true });
+            lightbox.init();
+            lightbox.loadAndOpen(itemIndex);
+        };
         const item = historyImageDataSource[itemIndex];
-
         if (item.width > 0 && item.height > 0) {
-            _openPhotoSwipeInstance(itemIndex);
-            return;
+            _openInstance();
+        } else {
+            Swal.fire({ title: 'Загрузка изображения...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const img = new Image();
+            img.src = item.src;
+            img.onload = () => {
+                item.width = img.naturalWidth; item.height = img.naturalHeight;
+                Swal.close(); 
+                _openInstance();
+            };
+            img.onerror = () => Swal.fire('Ошибка', 'Не удалось загрузить изображение.', 'error');
         }
-
-        Swal.fire({
-            title: 'Загрузка изображения...',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
-
-        const img = new Image();
-        img.src = item.src;
-        img.onload = () => {
-            item.width = img.naturalWidth;
-            item.height = img.naturalHeight;
-            Swal.close();
-            _openPhotoSwipeInstance(itemIndex);
-        };
-        img.onerror = () => {
-            Swal.fire('Ошибка', 'Не удалось загрузить изображение.', 'error');
-        };
       };
 
+      const switchTab = (event, tabId) => {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        $(tabId).classList.add('active');
+      };
+      
       const init = () => {
-        const themeToggleButton = $('toggle-theme');
-        if (document.body.classList.contains('dark')) {
-          themeToggleButton.innerHTML = '☀️';
-        } else {
-          themeToggleButton.innerHTML = '🌙';
-        }
-        
+        $('toggle-theme').innerHTML = document.body.classList.contains('dark') ? '☀️' : '�';
         $('adena').addEventListener('input', calculate);
         $('minutes').addEventListener('input', calculate);
         $('minutes').addEventListener('keyup', e => { if (e.key === 'Enter') saveResult(); });
         $('upload-btn').addEventListener('click', () => $('image-upload').click());
         $('image-upload').addEventListener('change', previewImage);
         $('remove-image-btn').addEventListener('click', removePreviewImage);
+        $('new-note-input').addEventListener('keyup', e => { if (e.key === 'Enter') addNote(); });
+        $('alarm-volume').addEventListener('input', (e) => setAlarmVolume(e.target.value));
+        $('add-alarm-btn').onclick = handleAddAlarmClick;
+        
+        document.body.addEventListener('click', () => {
+            if (alarmInterval) return; 
+            initAudio();
+            alarmInterval = setInterval(checkAlarms, 1000);
+        }, { once: true });
 
         const savedProfile = localStorage.getItem('adenafarm_currentProfile');
         if (savedProfile) {
-            currentProfile = savedProfile;
+            selectProfile(savedProfile);
+        } else {
+            updateUiForProfile();
         }
-        updateUiForProfile();
-        initLibs();
+        
+        tsParticles.load("tsparticles",{fpsLimit:60,interactivity:{events:{onHover:{enable:true,mode:"repulse"},resize:true},modes:{repulse:{distance:60,duration:0.4}}},particles:{color:{value:"#888"},links:{color:"#888",distance:150,enable:true,opacity:0.2,width:1},move:{direction:"none",enable:true,outModes:{default:"bounce"},random:true,speed:1,straight:false},number:{density:{enable:true,area:800},value:80},opacity:{value:0.2},shape:{type:"circle"},size:{value:{min:1,max:3}}},detectRetina:true});
+        tippy('[data-tippy-content]', { theme: document.body.classList.contains('dark') ? 'dark' : 'light' });
       };
 
       return {
-        init, saveResult, openStats, closeStats, deleteEntry, toggleTheme,
+        init, saveResult, openStats, closeStats, deleteEntry, toggleTheme, toggleView,
         openProfileManager, closeProfileManager, selectProfile, createNewProfile, deleteProfile,
-        copyResult, copyHistoryEntry,
-        openGallery
+        copyResult, copyHistoryEntry, openGallery, switchTab, 
+        addNote, editNote, deleteNote,
+        addAlarm: handleAddAlarmClick, deleteAlarm, toggleAlarm
       };
     };
 
