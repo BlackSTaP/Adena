@@ -80,10 +80,10 @@
       background-color: #fff;
       color: #333;
     }
-    body.dark textarea, body.dark input {
-        background-color: var(--bg-dark);
-        color: var(--text-dark);
-        border-color: #444;
+    body.dark input, body.dark textarea {
+        background-color: #fff; /* Белый фон для полей ввода в темной теме */
+        color: #333; /* Темный текст для полей ввода в темной теме */
+        border-color: #555;
     }
     input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 6px rgba(58,141,222,0.3); outline: none; }
     input:disabled, button:disabled, textarea:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -424,15 +424,28 @@
         return num.toLocaleString('ru-RU');
       };
 
-      const copyText = async (text) => {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          try {
-            await navigator.clipboard.writeText(text);
+      const copyText = (text) => {
+        const textArea = document.createElement("textarea");
+        textArea.style.position = 'fixed';
+        textArea.style.top = '-9999px';
+        textArea.style.left = '-9999px';
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
             Swal.fire({ icon: 'success', title: 'Скопировано!', showConfirmButton: false, timer: 1500, toast: true, position: 'top-end' });
-          } catch (err) {
-            console.error('Failed to copy text: ', err);
+          } else {
+            console.error('Fallback: Oops, unable to copy');
+             Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось скопировать текст.', showConfirmButton: false, timer: 1500 });
           }
+        } catch (err) {
+          console.error('Fallback: Oops, unable to copy', err);
+          Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось скопировать текст.', showConfirmButton: false, timer: 1500 });
         }
+        document.body.removeChild(textArea);
       };
       
       const copyResult = () => {
